@@ -1,0 +1,12 @@
+node_modules/
+data/
+.npmrc
+*.db
+*.db-wal
+*.db-shm
+downloads/
+create_repo.ps1
+push.js
+push_to_github.bat
+dopush.js
+*.ps1

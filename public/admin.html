@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel – KyrexTweaks</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    body { background: var(--bg); }
+
+    .admin-layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: 100vh;
+    }
+
+    .admin-sidebar {
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-subtle);
+      padding: 24px 14px;
+      position: sticky; top: 0; height: 100vh;
+      overflow-y: auto;
+      display: flex; flex-direction: column;
+    }
+    .admin-sidebar .sidebar-logo {
+      font-size: 1.1rem; font-weight: 900;
+      background: linear-gradient(135deg,#ff3d5c,#dc143c);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; padding: 6px 10px; margin-bottom: 4px; display: block;
+    }
+    .admin-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--text-muted);
+      padding: 14px 10px 6px;
+    }
+
+    .admin-main { padding: 28px 32px; overflow-y: auto; }
+    .admin-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 28px; padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .admin-page-title { font-size: 1.5rem; font-weight: 800; }
+    .admin-badge {
+      background: var(--crimson-dim); border: 1px solid var(--border);
+      border-radius: 6px; padding: 4px 12px;
+      font-size: 0.75rem; font-weight: 700; color: var(--crimson);
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+
+    /* stat mini cards */
+    .mini-stat {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .mini-stat-icon {
+      width: 42px; height: 42px; border-radius: 10px;
+      background: var(--crimson-dim); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; flex-shrink: 0;
+    }
+    .mini-stat-val  { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+    .mini-stat-label{ font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+
+    /* action buttons in tables */
+    .tbl-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* file upload drop zone */
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition);
+      background: var(--bg-card);
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--crimson);
+      background: var(--crimson-dim);
+    }
+    .dropzone-icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .dropzone p { color: var(--text-dim); font-size: 0.9rem; }
+    .dropzone strong { color: var(--crimson); }
+
+    /* upload progress */
+    .upload-bar-wrap { margin-top: 14px; display: none; }
+    .upload-bar-track { height: 6px; background: var(--bg-card2); border-radius: 3px; overflow: hidden; }
+    .upload-bar-fill  { height: 100%; background: var(--crimson); border-radius: 3px; width: 0%; transition: width 0.3s; }
+
+    /* search input */
+    .search-wrap { position: relative; }
+    .search-wrap input { padding-left: 36px; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+
+    /* notification dot */
+    .notif-dot {
+      display: inline-block; width: 8px; height: 8px;
+      background: var(--crimson); border-radius: 50%;
+      margin-left: 6px; vertical-align: middle;
+      box-shadow: 0 0 6px var(--crimson);
+    }
+
+    /* confirm modal */
+    #confirmModal .modal { text-align: center; }
+    #confirmModal .modal-icon { font-size: 3rem; margin-bottom: 16px; display:flex; align-items:center; justify-content:center; color: var(--crimson); }
+    #confirmModal .modal-title { font-size: 1.1rem; margin-bottom: 10px; }
+    #confirmModal .modal-desc  { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 24px; }
+    #confirmModal .modal-btns  { display: flex; gap: 12px; justify-content: center; }
+
+    @media(max-width:900px){
+      .admin-layout { grid-template-columns: 1fr; }
+      .admin-sidebar { height: auto; position: static; flex-direction: row; flex-wrap: wrap; padding: 12px; }
+      .admin-sidebar .sidebar-logo { margin-bottom: 0; }
+      .admin-label { display: none; }
+      .sidebar-nav { flex-direction: row; flex-wrap: wrap; }
+      .admin-main { padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<!-- Confirm modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <div class="modal-icon" id="confirmIcon">
+      <span class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+    </div>
+    <div class="modal-title" id="confirmTitle">Are you sure?</div>
+    <div class="modal-desc"  id="confirmDesc">This action cannot be undone.</div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" id="confirmCancel">Cancel</button>
+      <button class="btn btn-danger" id="confirmOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="admin-layout">
+
+  <!-- ══════════ SIDEBAR ══════════ -->
+  <aside class="admin-sidebar">
+    <a href="/" class="sidebar-logo">KyrexTweaks</a>
+    <div style="font-size:0.72rem;color:var(--text-muted);padding:0 10px 16px;border-bottom:1px solid var(--border-subtle);margin-bottom:8px;">
+      Admin Panel
+    </div>
+
+    <nav class="sidebar-nav" style="flex:1;">
+      <div class="admin-label">Overview</div>
+      <a class="sidebar-link active" data-tab="dashboard" href="#">
+        <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Dashboard
+      </a>
+
+      <div class="admin-label">Management</div>
+      <a class="sidebar-link" data-tab="users" href="#">
+        <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></span> Users
+      </a>
+      <a class="sidebar-link" data-tab="purchases" href="#">
+        <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg></span> Purchases
+        <span class="notif-dot" id="pendingDot" style="display:none;"></span>
+      </a>
+      <a class="sidebar-link" data-tab="files" href="#">
+        <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span> Files
+      </a>
+      <a class="sidebar-link" data-tab="logs" href="#">
+        <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span> Download Logs
+      </a>
+
+      <div class="admin-label">Account</div>
+      <a class="sidebar-link" href="/dashboard.html" style="color:var(--text-muted);">
+        <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> My Dashboard
+      </a>
+      <a class="sidebar-link" id="logoutBtn" href="#" style="color:var(--text-muted);">
+        <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Logout
+      </a>
+    </nav>
+  </aside>
+
+  <!-- ══════════ MAIN ══════════ -->
+  <main class="admin-main">
+
+    <!-- topbar -->
+    <div class="admin-topbar">
+      <h1 class="admin-page-title" id="pageTitle">Dashboard</h1>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span id="adminNameDisplay" style="font-size:0.88rem;color:var(--text-dim);"></span>
+        <span class="admin-badge">Admin</span>
+      </div>
+    </div>
+
+    <!-- ── DASHBOARD TAB ── -->
+    <div class="tab-panel active" id="tab-dashboard">
+      <div class="grid-4" style="margin-bottom:28px;" id="statsGrid">
+        <div class="mini-stat">
+          <div class="mini-stat-icon"><span class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></span></div>
+          <div><div class="mini-stat-val" id="st-total">—</div><div class="mini-stat-label">Total Users</div></div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-icon"><span class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span></div>
+          <div><div class="mini-stat-val" id="st-buyers">—</div><div class="mini-stat-label">Buyers</div></div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-icon"><span class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></span></div>
+          <div><div class="mini-stat-val" id="st-newbies">—</div><div class="mini-stat-label">Newbies</div></div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-icon"><span class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span></div>
+          <div><div class="mini-stat-val" id="st-downloads">—</div><div class="mini-stat-label">Downloads</div></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="font-size:0.95rem;margin-bottom:16px;display:flex;align-items:center;gap:8px;"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span> Quick Actions</h3>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button class="btn btn-primary btn-sm" onclick="switchTab('purchases')" style="justify-content:flex-start;">
+              <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg></span> Review Purchase Requests
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="switchTab('users')" style="justify-content:flex-start;">
+              <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></span> Manage Users
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="switchTab('files')" style="justify-content:flex-start;">
+              <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span> Manage Download Files
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="switchTab('logs')" style="justify-content:flex-start;">
+              <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span> View Download Logs
+            </button>
+          </div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:0.95rem;margin-bottom:16px;display:flex;align-items:center;gap:8px;"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span> Admin Guide</h3>
+          <div style="display:flex;flex-direction:column;gap:10px;font-size:0.85rem;color:var(--text-dim);">
+            <div><span style="color:var(--crimson);">1.</span> User registers → role is <strong style="color:var(--text);">newbie</strong></div>
+            <div><span style="color:var(--crimson);">2.</span> User submits a purchase request with payment proof</div>
+            <div><span style="color:var(--crimson);">3.</span> You approve it here → role upgrades to <strong style="color:var(--green);">buyer</strong></div>
+            <div><span style="color:var(--crimson);">4.</span> Buyer can now download from their dashboard</div>
+            <div><span style="color:var(--crimson);">5.</span> You can manually grant/revoke access any time</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── USERS TAB ── -->
+    <div class="tab-panel" id="tab-users">
+      <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+        <div class="search-wrap" style="flex:1;min-width:200px;">
+          <span class="search-icon icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+          <input class="form-control" id="userSearch" placeholder="Search by username or email…" />
+        </div>
+        <button class="btn btn-ghost btn-sm" id="refreshUsersBtn">
+          <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg></span> Refresh
+        </button>
+      </div>
+      <div class="table-wrap">
+        <table id="usersTable">
+          <thead>
+            <tr>
+              <th>ID</th><th>Username</th><th>Email</th>
+              <th>Role</th><th>Access</th><th>Joined</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody">
+            <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-muted);">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── PURCHASES TAB ── -->
+    <div class="tab-panel" id="tab-purchases">
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-ghost btn-sm filter-btn active" data-filter="all">All</button>
+          <button class="btn btn-ghost btn-sm filter-btn" data-filter="pending">Pending</button>
+          <button class="btn btn-ghost btn-sm filter-btn" data-filter="approved">Approved</button>
+          <button class="btn btn-ghost btn-sm filter-btn" data-filter="rejected">Rejected</button>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="refreshPurchasesBtn" style="margin-left:auto;">
+          <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg></span> Refresh
+        </button>
+      </div>
+      <div class="table-wrap">
+        <table id="purchasesTable">
+          <thead>
+            <tr>
+              <th>ID</th><th>User</th><th>Email</th>
+              <th>Note</th><th>Status</th><th>Date</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="purchasesBody">
+            <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-muted);">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── FILES TAB ── -->
+    <div class="tab-panel" id="tab-files">
+      <!-- Upload zone -->
+      <div class="dropzone" id="dropzone">
+        <div class="dropzone-icon"><span class="icon" style="font-size:2.5rem;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span></div>
+        <p><strong>Click to upload</strong> or drag &amp; drop a file</p>
+        <p style="font-size:0.8rem;margin-top:6px;">Max 500 MB · Any file type</p>
+        <input type="file" id="fileInput" style="display:none;" />
+      </div>
+      <div class="upload-bar-wrap" id="uploadBarWrap">
+        <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--text-dim);margin-bottom:6px;">
+          <span id="uploadFileName">Uploading…</span>
+          <span id="uploadPct">0%</span>
+        </div>
+        <div class="upload-bar-track">
+          <div class="upload-bar-fill" id="uploadBarFill"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <h3 style="font-size:0.95rem;">Available Files</h3>
+          <button class="btn btn-ghost btn-sm" id="refreshFilesBtn">
+            <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg></span> Refresh
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Filename</th><th>Size</th><th>Modified</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="filesBody">
+              <tr><td colspan="4" style="text-align:center;padding:32px;color:var(--text-muted);">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── LOGS TAB ── -->
+    <div class="tab-panel" id="tab-logs">
+      <div style="display:flex;gap:12px;margin-bottom:20px;align-items:center;flex-wrap:wrap;">
+        <div class="search-wrap" style="flex:1;min-width:200px;">
+          <span class="search-icon icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+          <input class="form-control" id="logSearch" placeholder="Filter by username or filename…" />
+        </div>
+        <button class="btn btn-ghost btn-sm" id="refreshLogsBtn">
+          <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg></span> Refresh
+        </button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>ID</th><th>User</th><th>File</th><th>IP</th><th>Date</th></tr>
+          </thead>
+          <tbody id="logsBody">
+            <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-muted);">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div><!-- /admin-layout -->
+
+<script src="/js/app.js"></script>
+<script src="/js/admin.js"></script>
+<script src="/js/fx.js"></script>
+</body>
+</html>

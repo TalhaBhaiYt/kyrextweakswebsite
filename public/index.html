@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KyrexTweaks – Windows Performance Optimizer</title>
+  <meta name="description" content="KyrexTweaks is the most advanced Windows optimizer. Boost performance, protect privacy, and take control of your PC." />
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    /* ── Landing-page-only styles ── */
+    .scroll-film {
+      position: relative;
+      height: 300vh;
+    }
+    .scroll-film-sticky {
+      position: sticky; top: 0;
+      height: 100vh; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .scroll-canvas {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 100% 80% at 50% 50%, rgba(220,20,60,0.08) 0%, transparent 70%);
+    }
+    .scroll-text {
+      position: relative; z-index: 2;
+      text-align: center; padding: 0 24px;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    .scroll-text h2 {
+      font-size: clamp(2rem, 5vw, 4rem);
+      font-weight: 900; letter-spacing: -0.03em;
+      margin-bottom: 16px;
+    }
+    .scroll-text p { color: var(--text-dim); font-size: 1.1rem; max-width: 540px; margin: 0 auto; }
+
+    /* particle field */
+    #particles { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+
+    /* glow line */
+    .glow-line {
+      width: 120px; height: 2px;
+      background: linear-gradient(to right, transparent, var(--crimson), transparent);
+      margin: 0 auto 24px;
+    }
+
+    /* testimonials */
+    .testimonial {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      position: relative;
+    }
+    .testimonial::before {
+      content: '"';
+      position: absolute; top: 16px; left: 20px;
+      font-size: 4rem; color: var(--crimson); opacity: 0.3;
+      line-height: 1; font-family: Georgia, serif;
+    }
+    .testimonial-text { font-size: 0.92rem; color: var(--text-dim); line-height: 1.7; margin-bottom: 16px; padding-top: 12px; }
+    .testimonial-author { display: flex; align-items: center; gap: 12px; }
+    .testimonial-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--crimson-dim); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; color: var(--crimson); font-size: 0.9rem;
+    }
+    .testimonial-name { font-weight: 600; font-size: 0.88rem; }
+    .testimonial-role { font-size: 0.78rem; color: var(--text-muted); }
+
+    /* steps */
+    .step {
+      display: flex; gap: 24px; align-items: flex-start;
+    }
+    .step-num {
+      width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+      background: var(--crimson-dim); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; font-weight: 800; color: var(--crimson);
+    }
+    .step-content h3 { font-size: 1rem; margin-bottom: 6px; }
+    .step-content p  { font-size: 0.88rem; color: var(--text-dim); }
+
+    /* faq */
+    .faq-item {
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 20px 0;
+    }
+    .faq-q {
+      width: 100%; background: none; border: none;
+      color: var(--text); font-size: 0.95rem; font-weight: 600;
+      text-align: left; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center; gap: 16px;
+      padding: 0;
+    }
+    .faq-q .faq-arrow { color: var(--crimson); transition: transform 0.3s; font-size: 1.1rem; }
+    .faq-q.open .faq-arrow { transform: rotate(180deg); }
+    .faq-a { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+    .faq-a p { color: var(--text-dim); font-size: 0.9rem; line-height: 1.7; padding-top: 14px; }
+
+    /* banner CTA */
+    .cta-banner {
+      background: linear-gradient(135deg, rgba(220,20,60,0.15) 0%, rgba(160,14,43,0.1) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 60px 40px;
+      text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .cta-banner::before {
+      content: '';
+      position: absolute; top: -60%; left: 50%; transform: translateX(-50%);
+      width: 600px; height: 300px;
+      background: radial-gradient(ellipse, rgba(220,20,60,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cta-banner h2 { font-size: clamp(1.6rem, 4vw, 2.4rem); margin-bottom: 14px; }
+    .cta-banner p  { color: var(--text-dim); max-width: 500px; margin: 0 auto 32px; }
+
+    /* compat badges */
+    .compat-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--bg-card); border: 1px solid var(--border-subtle);
+      border-radius: 8px; padding: 8px 16px;
+      font-size: 0.82rem; color: var(--text-dim); font-weight: 500;
+    }
+    .compat-badge span { color: var(--crimson); }
+  </style>
+</head>
+<body>
+
+<!-- Particle canvas handled by fx.js -->
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- ══════════════════════ NAVBAR ══════════════════════ -->
+<nav class="navbar" id="navbar">
+  <a href="/" class="nav-logo">KyrexTweaks</a>
+  <div class="nav-links" id="navLinks">
+    <a href="#features" class="nav-link">Features</a>
+    <a href="#how-it-works" class="nav-link">How It Works</a>
+    <a href="#pricing" class="nav-link">Pricing</a>
+    <a href="#faq" class="nav-link">FAQ</a>
+    <div class="divider" style="width:1px;height:20px;margin:0 8px;background:var(--border-subtle);"></div>
+    <a href="/login.html" class="nav-link">Login</a>
+    <a href="/register.html" class="btn btn-primary btn-sm">Get Access</a>
+  </div>
+</nav>
+
+<!-- ══════════════════════ HERO ══════════════════════ -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+
+  <div class="hero-eyebrow">
+    <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c0 0-5 5-5 10a5 5 0 0010 0c0-5-5-10-5-10z"/></svg></span> Windows Performance Optimizer
+  </div>
+
+  <h1>
+    Unleash Your<br>
+    <span class="gradient-text">PC's True Power</span>
+  </h1>
+
+  <p class="hero-sub">
+    KyrexTweaks is an advanced all-in-one Windows optimizer with 150+ tweaks —
+    boost FPS, disable telemetry, clean junk, and take full control of your system.
+  </p>
+
+  <div class="hero-cta">
+    <a href="/register.html" class="btn btn-primary btn-lg">
+      <span class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/></svg></span> Get KyrexTweaks
+    </a>
+    <a href="#features" class="btn btn-outline btn-lg">
+      Explore Features
+    </a>
+  </div>
+
+  <div class="hero-stats" data-reveal>
+    <div>
+      <div class="hero-stat-val">150+</div>
+      <div class="hero-stat-label">Optimization Tweaks</div>
+    </div>
+    <div>
+      <div class="hero-stat-val">24</div>
+      <div class="hero-stat-label">Languages Supported</div>
+    </div>
+    <div>
+      <div class="hero-stat-val">Win 7–11</div>
+      <div class="hero-stat-label">Windows Compatible</div>
+    </div>
+    <div>
+      <div class="hero-stat-val">v16.7</div>
+      <div class="hero-stat-label">Latest Version</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ SCROLL FILM ══════════════════════ -->
+<div class="scroll-film" id="scrollFilm">
+  <div class="scroll-film-sticky">
+    <div class="scroll-canvas" id="scrollCanvas"></div>
+    <div class="scroll-text" id="scrollText">
+      <div class="glow-line"></div>
+      <h2 class="gradient-text" id="scrollHeading">Performance. Privacy. Control.</h2>
+      <p id="scrollSub">Every tweak is designed for maximum impact with zero risk.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ FEATURES ══════════════════════ -->
+<section class="section features-section" id="features">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-eyebrow">What's Inside</span>
+      <h2>Everything You Need to <span class="gradient-text">Dominate Performance</span></h2>
+      <p>A complete toolkit to clean, tune, and lock down your Windows installation.</p>
+    </div>
+
+    <div class="grid-3">
+      <div class="feature-card" data-reveal data-delay="1">
+        <div class="feature-icon"><span class="icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span></div>
+        <h3>Performance Boost</h3>
+        <p>Disable unnecessary services, tweak registry settings, and optimize power plans for maximum speed and FPS.</p>
+      </div>
+      <div class="feature-card" data-reveal data-delay="2">
+        <div class="feature-icon"><span class="icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></span></div>
+        <h3>Privacy Shield</h3>
+        <p>Kill telemetry, block data collection, disable Cortana &amp; Copilot, and secure your HOSTS file in one click.</p>
+      </div>
+      <div class="feature-card" data-reveal data-delay="3">
+        <div class="feature-icon"><span class="icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.06 11.9l8.07-8.06a2.85 2.85 0 114.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1 1 2.5 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 00-3-3.02z"/></svg></span></div>
+        <h3>System Cleaner</h3>
+        <p>Wipe temp files, clear DNS cache, clean prefetch, and remove junk to recover disk space instantly.</p>
+      </div>
+      <div class="feature-card" data-reveal data-delay="1">
+        <div class="feature-icon"><span class="icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg></span></div>
+        <h3>DNS Changer</h3>
+        <p>Switch to Cloudflare, Google, Quad9, or custom DNS servers for faster browsing and better security.</p>
+      </div>
+      <div class="feature-card" data-reveal data-delay="2">
+        <div class="feature-icon"><span class="icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span></div>
+        <h3>UWP Uninstaller</h3>
+        <p>Remove bloatware, built-in Microsoft Store apps, and preinstalled OEM software cluttering your system.</p>
+      </div>
+      <div class="feature-card" data-reveal data-delay="3">
+        <div class="feature-icon"><span class="icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/></svg></span></div>
+        <h3>Startup Manager</h3>
+        <p>Take control of startup programs to drastically reduce boot time and keep RAM usage low from launch.</p>
+      </div>
+      <div class="feature-card" data-reveal data-delay="1">
+        <div class="feature-icon"><span class="icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span></div>
+        <h3>Registry Fixer</h3>
+        <p>Safely scan and repair broken registry keys and missing file associations that slow down your PC.</p>
+      </div>
+      <div class="feature-card" data-reveal data-delay="2">
+        <div class="feature-icon"><span class="icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span></div>
+        <h3>Hardware Inspector</h3>
+        <p>Get a full readout of your CPU, GPU, RAM, and storage — all in one clean, organized hardware view.</p>
+      </div>
+      <div class="feature-card" data-reveal data-delay="3">
+        <div class="feature-icon"><span class="icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span></div>
+        <h3>App Downloader</h3>
+        <p>Instantly download popular apps like Discord, Chrome, 7-Zip, Steam, and 100+ more right from the tool.</p>
+      </div>
+    </div>
+
+    <!-- Compat row -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:48px;" data-reveal>
+      <div class="compat-badge"><span class="icon" style="color:var(--crimson);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Windows 7</div>
+      <div class="compat-badge"><span class="icon" style="color:var(--crimson);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Windows 8.1</div>
+      <div class="compat-badge"><span class="icon" style="color:var(--crimson);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Windows 10</div>
+      <div class="compat-badge"><span class="icon" style="color:var(--crimson);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Windows 11</div>
+      <div class="compat-badge"><span class="icon" style="color:var(--crimson);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> .NET 4.8.1</div>
+      <div class="compat-badge"><span class="icon" style="color:var(--crimson);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> 24 Languages</div>
+      <div class="compat-badge"><span class="icon" style="color:var(--crimson);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> No Install Required</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ HOW IT WORKS ══════════════════════ -->
+<section class="section" id="how-it-works" style="background:var(--bg-surface);">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-eyebrow">Simple Process</span>
+      <h2>Up and Running in <span class="gradient-text">Minutes</span></h2>
+      <p>No installation, no complexity. Just download, run, and optimize.</p>
+    </div>
+
+    <div style="max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:32px;">
+      <div class="step" data-reveal data-delay="1">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>Create Your Account</h3>
+          <p>Register for free in seconds. Your account is your access key to all downloads and updates.</p>
+        </div>
+      </div>
+      <div class="step" data-reveal data-delay="2">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Purchase KyrexTweaks</h3>
+          <p>Contact us or submit a purchase request. Once payment is confirmed, your account gets instant download access.</p>
+        </div>
+      </div>
+      <div class="step" data-reveal data-delay="3">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Download &amp; Run</h3>
+          <p>Grab the latest version from your dashboard. No install needed — just run as Administrator and start tweaking.</p>
+        </div>
+      </div>
+      <div class="step" data-reveal data-delay="4">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h3>Enjoy Peak Performance</h3>
+          <p>Apply the tweaks you want, revert anything you don't like, and enjoy a faster, cleaner, more private Windows.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ PRICING ══════════════════════ -->
+<section class="section pricing-section" id="pricing">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-eyebrow">Pricing</span>
+      <h2>Simple, <span class="gradient-text">Transparent</span> Pricing</h2>
+      <p>One-time payment. Lifetime updates. No subscriptions.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;max-width:800px;margin:0 auto;">
+
+      <div class="pricing-card" data-reveal data-delay="1">
+        <div class="pricing-name">Free Preview</div>
+        <div class="pricing-price"><sup>$</sup>0</div>
+        <div class="pricing-desc">See what KyrexTweaks can do.</div>
+        <ul class="pricing-features">
+          <li>Create an account</li>
+          <li>Browse all features</li>
+          <li>Submit a purchase request</li>
+          <li style="opacity:0.35;"><s>Download access</s></li>
+          <li style="opacity:0.35;"><s>Lifetime updates</s></li>
+        </ul>
+        <a href="/register.html" class="btn btn-outline" style="width:100%">Create Account</a>
+      </div>
+
+      <div class="pricing-card featured" data-reveal data-delay="2">
+        <div class="pricing-badge">Most Popular</div>
+        <div class="pricing-name">Full Access</div>
+        <div class="pricing-price"><sup>$</sup>9<sub>/once</sub></div>
+        <div class="pricing-desc">Everything, forever. Pay once.</div>
+        <ul class="pricing-features">
+          <li>Full KyrexTweaks download</li>
+          <li>All 150+ tweaks unlocked</li>
+          <li>Lifetime free updates</li>
+          <li>24-language support</li>
+          <li>Priority support</li>
+        </ul>
+        <a href="/register.html" class="btn btn-primary" style="width:100%">Get Access Now</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ TESTIMONIALS ══════════════════════ -->
+<section class="section" style="background:var(--bg-surface);">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-eyebrow">Reviews</span>
+      <h2>Trusted by <span class="gradient-text">Thousands of Users</span></h2>
+    </div>
+
+    <div class="grid-3">
+      <div class="testimonial" data-reveal data-delay="1">
+        <p class="testimonial-text">KyrexTweaks boosted my FPS by 30% and my boot time went from 45 seconds down to 12. The telemetry blocking alone is worth the price.</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">AX</div>
+          <div>
+            <div class="testimonial-name">AxisGamer</div>
+            <div class="testimonial-role">PC Enthusiast</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial" data-reveal data-delay="2">
+        <p class="testimonial-text">I've tried a dozen optimizers. This is the only one that actually explains what every tweak does and lets you revert changes safely.</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">ZT</div>
+          <div>
+            <div class="testimonial-name">ZeroTrace_</div>
+            <div class="testimonial-role">Privacy Advocate</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial" data-reveal data-delay="3">
+        <p class="testimonial-text">Set up on 6 client machines in under an hour. The multilingual support and clean UI made it effortless. Highly recommend for IT work.</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">NK</div>
+          <div>
+            <div class="testimonial-name">NovaTech_K</div>
+            <div class="testimonial-role">IT Technician</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ FAQ ══════════════════════ -->
+<section class="section" id="faq">
+  <div class="container" style="max-width:720px;">
+    <div class="section-header">
+      <span class="section-eyebrow">FAQ</span>
+      <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
+    </div>
+
+    <div id="faqList">
+      <div class="faq-item" data-reveal>
+        <button class="faq-q">Is KyrexTweaks safe to use? <span class="faq-arrow">▼</span></button>
+        <div class="faq-a"><p>Yes. Every tweak is carefully researched and tested. Risky changes require confirmation and can be reverted. The tool never modifies system files without explicit permission.</p></div>
+      </div>
+      <div class="faq-item" data-reveal>
+        <button class="faq-q">Which Windows versions are supported? <span class="faq-arrow">▼</span></button>
+        <div class="faq-a"><p>KyrexTweaks supports Windows 7, 8.1, 10, and 11 (both 32-bit and 64-bit). It requires .NET Framework 4.8.1 which is free to download from Microsoft.</p></div>
+      </div>
+      <div class="faq-item" data-reveal>
+        <button class="faq-q">How do I get download access after payment? <span class="faq-arrow">▼</span></button>
+        <div class="faq-a"><p>Register an account, then submit a purchase request from your dashboard. Once your payment is confirmed by an admin, your account is instantly upgraded to Buyer status and the download unlocks.</p></div>
+      </div>
+      <div class="faq-item" data-reveal>
+        <button class="faq-q">Do I get future updates? <span class="faq-arrow">▼</span></button>
+        <div class="faq-a"><p>Yes. Your one-time payment includes lifetime updates. Every new version will appear in your dashboard automatically.</p></div>
+      </div>
+      <div class="faq-item" data-reveal>
+        <button class="faq-q">Does it require installation? <span class="faq-arrow">▼</span></button>
+        <div class="faq-a"><p>No installation needed. KyrexTweaks is a portable executable. Download it, run it as Administrator, and you're ready to go.</p></div>
+      </div>
+      <div class="faq-item" data-reveal>
+        <button class="faq-q">Can I revert changes I apply? <span class="faq-arrow">▼</span></button>
+        <div class="faq-a"><p>Most tweaks include a built-in revert option. Before applying major changes, KyrexTweaks backs up registry keys automatically so you can roll back at any time.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ CTA BANNER ══════════════════════ -->
+<section class="section" style="background:var(--bg-surface);">
+  <div class="container">
+    <div class="cta-banner" data-reveal>
+      <h2>Ready to <span class="gradient-text">Supercharge Your PC?</span></h2>
+      <p>Join thousands of users who already have a faster, cleaner, more private Windows experience.</p>
+      <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+        <a href="/register.html" class="btn btn-primary btn-lg"><span class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/></svg></span> Get KyrexTweaks Now</a>
+        <a href="/login.html" class="btn btn-outline btn-lg">Sign In</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ FOOTER ══════════════════════ -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <h3>KyrexTweaks</h3>
+        <p>The most powerful Windows optimizer built for enthusiasts, gamers, and IT professionals. Fast, safe, and fully reversible.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#how-it-works">How It Works</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Account</h4>
+        <ul>
+          <li><a href="/register.html">Register</a></li>
+          <li><a href="/login.html">Login</a></li>
+          <li><a href="/dashboard.html">Dashboard</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2024 KyrexTweaks. All rights reserved.</p>
+      <p style="color:var(--text-muted);font-size:0.8rem;">v16.7 · Windows 7–11</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ── Scroll film messages ── */
+(function () {
+  const slides = [
+    { h: 'Performance. Privacy. Control.', p: 'Every tweak is designed for maximum impact with zero risk.' },
+    { h: 'Disable Telemetry in One Click', p: 'Stop Microsoft from tracking your every move. Your data, your rules.' },
+    { h: 'Gain FPS. Reduce Latency.', p: 'Optimized timer resolution, CPU scheduling, and GPU settings for gaming.' },
+    { h: 'Clean. Fast. Portable.', p: 'No installation. No bloat. Just run as Admin and start tweaking.' },
+  ];
+  let currentSlide = 0;
+  const heading    = document.getElementById('scrollHeading');
+  const sub        = document.getElementById('scrollSub');
+  const scrollText = document.getElementById('scrollText');
+  const film       = document.getElementById('scrollFilm');
+
+  function onScroll() {
+    const rect     = film.getBoundingClientRect();
+    const total    = film.offsetHeight - window.innerHeight;
+    const scrolled = -rect.top;
+    const progress = Math.max(0, Math.min(1, scrolled / total));
+    const idx      = Math.min(slides.length - 1, Math.floor(progress * slides.length));
+
+    if (idx !== currentSlide) {
+      scrollText.style.opacity = '0';
+      scrollText.style.transform = 'translateY(16px)';
+      setTimeout(() => {
+        currentSlide = idx;
+        heading.textContent = slides[idx].h;
+        sub.textContent     = slides[idx].p;
+        scrollText.style.opacity  = '1';
+        scrollText.style.transform = 'translateY(0)';
+      }, 250);
+    }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+})();
+
+/* ── Scroll reveal ── */
+(function () {
+  const els = document.querySelectorAll('[data-reveal]');
+  const io  = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('revealed'); io.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  els.forEach(el => io.observe(el));
+})();
+
+/* ── FAQ accordion ── */
+document.querySelectorAll('.faq-q').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const answer = btn.nextElementSibling;
+    const isOpen = btn.classList.contains('open');
+    document.querySelectorAll('.faq-q.open').forEach(b => {
+      b.classList.remove('open');
+      b.nextElementSibling.style.maxHeight = '0';
+    });
+    if (!isOpen) {
+      btn.classList.add('open');
+      answer.style.maxHeight = answer.scrollHeight + 'px';
+    }
+  });
+});
+
+/* ── Redirect logged-in users ── */
+(function () {
+  const token = localStorage.getItem('kyrex_token');
+  if (!token) return;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (payload.exp * 1000 > Date.now()) {
+      const loginLink = document.querySelector('a[href="/login.html"]');
+      if (loginLink) { loginLink.textContent = 'Dashboard'; loginLink.href = '/dashboard.html'; }
+    }
+  } catch {}
+})();
+</script>
+<script src="/js/fx.js"></script>
+</body>
+</html>

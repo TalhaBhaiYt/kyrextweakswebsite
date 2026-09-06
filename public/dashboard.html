@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard – KyrexTweaks</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    body { background: var(--bg); }
+
+    /* sidebar user card */
+    .user-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    .user-avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--crimson-dim); border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; font-weight: 800; color: var(--crimson);
+      margin: 0 auto 10px;
+    }
+    .user-card .uname { font-weight: 700; font-size: 0.95rem; }
+    .user-card .uemail { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* download progress */
+    .dl-progress {
+      height: 3px; background: var(--bg-card2);
+      border-radius: 2px; overflow: hidden; margin-top: 8px;
+    }
+    .dl-progress-bar {
+      height: 100%; background: var(--crimson);
+      border-radius: 2px;
+      transition: width 0.4s ease;
+      width: 0%;
+    }
+
+    /* request form card */
+    .request-card {
+      background: linear-gradient(135deg, rgba(220,20,60,0.07) 0%, rgba(160,14,43,0.04) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+    }
+
+    /* version tag */
+    .version-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--crimson-dim); border: 1px solid var(--border);
+      border-radius: 6px; padding: 3px 10px;
+      font-size: 0.75rem; font-weight: 700; color: var(--crimson);
+    }
+
+    /* changelog item */
+    .changelog-item { padding: 16px 0; border-bottom: 1px solid var(--border-subtle); }
+    .changelog-item:last-child { border-bottom: none; }
+    .changelog-ver { font-size: 0.8rem; font-weight: 700; color: var(--crimson); margin-bottom: 6px; }
+    .changelog-item ul { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+    .changelog-item ul li { font-size: 0.87rem; color: var(--text-dim); display: flex; gap: 8px; }
+    .changelog-item ul li::before { content: '→'; color: var(--crimson); flex-shrink: 0; }
+
+    /* status indicator */
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      display: inline-block; margin-right: 6px;
+    }
+    .status-dot.green  { background: var(--green);  box-shadow: 0 0 6px var(--green); }
+    .status-dot.yellow { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+    .status-dot.red    { background: var(--red);    box-shadow: 0 0 6px var(--red); }
+  </style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<div class="dash-layout" id="dashLayout">
+
+  <!-- ══════════ SIDEBAR ══════════ -->
+  <aside class="dash-sidebar">
+    <a href="/" class="sidebar-logo">KyrexTweaks</a>
+
+    <!-- User info card -->
+    <div class="user-card">
+      <div class="user-avatar" id="sidebarAvatar">?</div>
+      <div class="uname"  id="sidebarName">Loading...</div>
+      <div class="uemail" id="sidebarEmail"></div>
+      <div style="margin-top:10px;">
+        <span class="badge" id="sidebarBadge">—</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="sidebar-link active" data-tab="overview" href="#">
+        <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span> Overview
+      </a>
+      <a class="sidebar-link" data-tab="downloads" href="#">
+        <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Downloads
+      </a>
+      <a class="sidebar-link" data-tab="purchase" href="#">
+        <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg></span> Get Access
+      </a>
+      <a class="sidebar-link" data-tab="changelog" href="#">
+        <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span> Changelog
+      </a>
+      <a class="sidebar-link" data-tab="account" href="#">
+        <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span> Account
+      </a>
+      <div class="divider" style="margin:12px 0;"></div>
+      <a class="sidebar-link" href="/" style="color:var(--text-muted);">
+        <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></span> Back to Site
+      </a>
+      <a class="sidebar-link" id="logoutBtn" href="#" style="color:var(--text-muted);">
+        <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Logout
+      </a>
+    </nav>
+  </aside>
+
+  <!-- ══════════ MAIN ══════════ -->
+  <main class="dash-main">
+
+    <!-- ── OVERVIEW ── -->
+    <section class="dash-section active" id="tab-overview">
+      <div class="dash-header">
+        <h1 class="dash-title">Welcome back, <span id="greetName" class="gradient-text">User</span></h1>
+      </div>
+
+      <!-- status cards -->
+      <div class="grid-4" style="margin-bottom:28px;" id="overviewStats">
+        <div class="stat-card">
+          <div class="stat-label">Account Status</div>
+          <div id="statStatus" style="font-size:1rem;font-weight:700;display:flex;align-items:center;">
+            <span class="status-dot yellow"></span> Loading...
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Role</div>
+          <div class="stat-value" id="statRole" style="font-size:1.2rem;">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Access Level</div>
+          <div class="stat-value" id="statAccess" style="font-size:1.2rem;">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Member Since</div>
+          <div class="stat-value" id="statJoined" style="font-size:0.85rem;font-weight:600;">—</div>
+        </div>
+      </div>
+
+      <!-- access info banner -->
+      <div id="accessBanner" style="margin-bottom:28px;"></div>
+
+      <!-- quick info grid -->
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin-bottom:16px;font-size:1rem;display:flex;align-items:center;gap:8px;"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span> Latest Version</h3>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="version-tag">v16.7</span>
+            <span style="font-size:0.85rem;color:var(--text-dim);">Released recently</span>
+          </div>
+          <div class="divider"></div>
+          <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;">
+            <li style="font-size:0.85rem;color:var(--text-dim);display:flex;gap:8px;"><span style="color:var(--crimson);">→</span> 150+ optimization tweaks</li>
+            <li style="font-size:0.85rem;color:var(--text-dim);display:flex;gap:8px;"><span style="color:var(--crimson);">→</span> Windows 7 / 8.1 / 10 / 11</li>
+            <li style="font-size:0.85rem;color:var(--text-dim);display:flex;gap:8px;"><span style="color:var(--crimson);">→</span> 24 languages supported</li>
+            <li style="font-size:0.85rem;color:var(--text-dim);display:flex;gap:8px;"><span style="color:var(--crimson);">→</span> Portable .exe, no install</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:16px;font-size:1rem;display:flex;align-items:center;gap:8px;"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span> Quick Actions</h3>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button class="btn btn-primary" id="quickDownloadBtn" style="justify-content:flex-start;">
+              <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Download Latest Version
+            </button>
+            <button class="btn btn-ghost" onclick="switchTab('purchase')" style="justify-content:flex-start;">
+              <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg></span> Request Purchase Access
+            </button>
+            <button class="btn btn-ghost" onclick="switchTab('changelog')" style="justify-content:flex-start;">
+              <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span> View Changelog
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── DOWNLOADS ── -->
+    <section class="dash-section" id="tab-downloads">
+      <div class="dash-header">
+        <h1 class="dash-title">Downloads</h1>
+        <button class="btn btn-ghost btn-sm" id="refreshFilesBtn">
+          <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg></span> Refresh
+        </button>
+      </div>
+
+      <!-- locked state (shown when not buyer) -->
+      <div class="locked-overlay" id="downloadsLocked" style="display:none;">
+        <div class="locked-icon"><span class="icon" style="font-size:3rem;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></span></div>
+        <h3>Download Access Required</h3>
+        <p>You need to purchase KyrexTweaks to unlock downloads. Submit a request and an admin will grant you access once your payment is confirmed.</p>
+        <button class="btn btn-primary" onclick="switchTab('purchase')">
+          <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg></span> Request Access
+        </button>
+      </div>
+
+      <!-- file list (shown when buyer) -->
+      <div id="fileList" style="display:none;">
+        <div id="fileListInner" style="display:flex;flex-direction:column;gap:12px;"></div>
+        <div id="noFilesMsg" style="display:none;text-align:center;padding:40px;color:var(--text-dim);">
+          No files available yet. Check back soon.
+        </div>
+      </div>
+
+      <div id="filesLoading" style="text-align:center;padding:48px;display:none;">
+        <div class="spinner" style="margin:0 auto;"></div>
+      </div>
+    </section>
+
+    <!-- ── GET ACCESS / PURCHASE ── -->
+    <section class="dash-section" id="tab-purchase">
+      <div class="dash-header">
+        <h1 class="dash-title">Get Access</h1>
+      </div>
+
+      <!-- already has access -->
+      <div id="alreadyHasAccess" style="display:none;" class="card" >
+        <div style="text-align:center;padding:20px 0;">
+          <div style="font-size:3rem;margin-bottom:12px;display:flex;justify-content:center;color:var(--green);"><span class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span></div>
+          <h3 style="margin-bottom:8px;">You already have download access!</h3>
+          <p style="color:var(--text-dim);font-size:0.9rem;margin-bottom:20px;">Head to the Downloads tab to grab the latest version.</p>
+          <button class="btn btn-primary" onclick="switchTab('downloads')">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Go to Downloads
+          </button>
+        </div>
+      </div>
+
+      <!-- purchase request form -->
+      <div id="purchaseForm">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px;">
+          <div class="card">
+            <h3 style="font-size:1.05rem;margin-bottom:12px;">How to Pay</h3>
+            <p style="font-size:0.88rem;color:var(--text-dim);line-height:1.7;">
+              Pay via any method we support (PayPal, crypto, etc.) then submit a request below with your payment proof or transaction ID. An admin will verify and grant you access within minutes.
+            </p>
+            <div class="divider"></div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="font-size:0.85rem;"><span style="color:var(--crimson);">→</span> One-time payment</div>
+              <div style="font-size:0.85rem;"><span style="color:var(--crimson);">→</span> Instant access after approval</div>
+              <div style="font-size:0.85rem;"><span style="color:var(--crimson);">→</span> Lifetime updates included</div>
+            </div>
+          </div>
+          <div class="request-card">
+            <h3 style="font-size:1.05rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg></span> Submit Purchase Request</h3>
+            <p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:18px;">Include your transaction ID or payment reference so we can verify quickly.</p>
+
+            <div class="form-group" style="margin-bottom:14px;">
+              <label class="form-label">Payment Note / Transaction ID</label>
+              <textarea class="form-control" id="purchaseNote" rows="3"
+                placeholder="e.g. PayPal TX#12345, or 'Paid via BTC to address...'"></textarea>
+            </div>
+
+            <button class="btn btn-primary" id="submitPurchaseBtn" style="width:100%;">
+              Submit Request
+            </button>
+            <div id="purchaseMsg" style="display:none;margin-top:12px;font-size:0.88rem;padding:12px;border-radius:var(--radius);"></div>
+          </div>
+        </div>
+
+        <!-- existing requests -->
+        <div class="card" id="myRequestsWrap">
+          <h3 style="font-size:0.95rem;margin-bottom:16px;">My Requests</h3>
+          <div id="myRequestsList">
+            <div style="text-align:center;padding:20px;color:var(--text-dim);font-size:0.88rem;">Loading...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CHANGELOG ── -->
+    <section class="dash-section" id="tab-changelog">
+      <div class="dash-header">
+        <h1 class="dash-title">Changelog</h1>
+      </div>
+      <div class="card">
+        <div class="changelog-item">
+          <div class="changelog-ver">v16.7 – Latest</div>
+          <ul>
+            <li>Added Copilot &amp; Recall disable options for Windows 11</li>
+            <li>New hardware inspector with real-time sensor data</li>
+            <li>Improved DNS changer with DoH support</li>
+            <li>Added 3 new UI languages (now 24 total)</li>
+            <li>Performance improvements and bug fixes</li>
+          </ul>
+        </div>
+        <div class="changelog-item">
+          <div class="changelog-ver">v16.5</div>
+          <ul>
+            <li>UWP uninstaller redesign with search &amp; filter</li>
+            <li>New startup manager with impact ratings</li>
+            <li>Registry fixer improvements</li>
+            <li>Windows 11 23H2 compatibility fixes</li>
+          </ul>
+        </div>
+        <div class="changelog-item">
+          <div class="changelog-ver">v16.0</div>
+          <ul>
+            <li>Complete UI redesign with dark theme</li>
+            <li>Added app downloader with 100+ popular apps</li>
+            <li>HOSTS file editor with adblock presets</li>
+            <li>Batch apply / revert for all tweaks</li>
+          </ul>
+        </div>
+        <div class="changelog-item">
+          <div class="changelog-ver">v15.x and earlier</div>
+          <ul>
+            <li>Initial public releases</li>
+            <li>Core privacy &amp; performance tweaks</li>
+            <li>Multi-language support added</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── ACCOUNT ── -->
+    <section class="dash-section" id="tab-account">
+      <div class="dash-header">
+        <h1 class="dash-title">Account Settings</h1>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="font-size:1rem;margin-bottom:18px;">Profile Info</h3>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <div class="form-label" style="margin-bottom:4px;">Username</div>
+              <div id="accUsername" style="font-size:0.95rem;color:var(--text);font-weight:600;">—</div>
+            </div>
+            <div>
+              <div class="form-label" style="margin-bottom:4px;">Email</div>
+              <div id="accEmail" style="font-size:0.95rem;color:var(--text);">—</div>
+            </div>
+            <div>
+              <div class="form-label" style="margin-bottom:4px;">Role</div>
+              <span class="badge" id="accRole">—</span>
+            </div>
+            <div>
+              <div class="form-label" style="margin-bottom:4px;">Member Since</div>
+              <div id="accJoined" style="font-size:0.88rem;color:var(--text-dim);">—</div>
+            </div>
+            <div>
+              <div class="form-label" style="margin-bottom:4px;">Last Login</div>
+              <div id="accLastLogin" style="font-size:0.88rem;color:var(--text-dim);">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size:1rem;margin-bottom:18px;">Session</h3>
+          <p style="font-size:0.88rem;color:var(--text-dim);margin-bottom:20px;">
+            Your login session is valid for 7 days. Logging out will clear your session from this device.
+          </p>
+          <button class="btn btn-danger" id="logoutBtnMain">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Logout
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div><!-- /dash-layout -->
+
+<script src="/js/app.js"></script>
+<script>
+/* ── Auth guard: redirect to login if not authenticated ── */
+const token = localStorage.getItem('kyrex_token');
+if (!token) { window.location.href = '/login.html'; }
+
+let currentUser = null;
+
+/* ── Load user info ── */
+async function loadUser() {
+  try {
+    const res  = await apiFetch('/api/auth/me');
+    const data = await res.json();
+    if (!res.ok) { logout(); return; }
+    currentUser = data.user;
+    renderUser();
+    loadMyRequests();
+    checkAndLoadFiles();
+  } catch {
+    logout();
+  }
+}
+
+function renderUser() {
+  const u = currentUser;
+
+  /* sidebar */
+  document.getElementById('sidebarAvatar').textContent = u.username.charAt(0).toUpperCase();
+  document.getElementById('sidebarName').textContent   = u.username;
+  document.getElementById('sidebarEmail').textContent  = u.email;
+  const sb = document.getElementById('sidebarBadge');
+  sb.textContent  = u.role;
+  sb.className    = 'badge badge-' + u.role;
+
+  /* overview */
+  document.getElementById('greetName').textContent = u.username;
+  document.getElementById('statRole').textContent  = u.role.charAt(0).toUpperCase() + u.role.slice(1);
+
+  const statusEl = document.getElementById('statStatus');
+  if (u.paid) {
+    statusEl.innerHTML = '<span class="status-dot green"></span> Active';
+    document.getElementById('statAccess').innerHTML = '<span style="display:inline-flex;align-items:center;gap:4px;"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Full</span>';
+  } else {
+    statusEl.innerHTML = '<span class="status-dot yellow"></span> Pending';
+    document.getElementById('statAccess').innerHTML = '<span style="display:inline-flex;align-items:center;gap:4px;"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span> Locked</span>';
+  }
+
+  document.getElementById('statJoined').textContent = formatDate(u.created_at);
+
+  /* access banner */
+  const banner = document.getElementById('accessBanner');
+  if (u.paid) {
+    banner.innerHTML = `
+      <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:var(--radius-lg);padding:16px 20px;display:flex;align-items:center;gap:14px;">
+        <span class="icon" style="font-size:1.5rem;color:var(--green);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+        <div><strong>Full access active.</strong> <span style="color:var(--text-dim);">Head to the Downloads tab to grab the latest KyrexTweaks.</span></div>
+        <button class="btn btn-success btn-sm" onclick="switchTab('downloads')" style="margin-left:auto;">Download Now</button>
+      </div>`;
+  } else {
+    banner.innerHTML = `
+      <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:var(--radius-lg);padding:16px 20px;display:flex;align-items:center;gap:14px;">
+        <span class="icon" style="font-size:1.5rem;color:var(--yellow);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></span>
+        <div><strong>Download locked.</strong> <span style="color:var(--text-dim);">Submit a purchase request to unlock access.</span></div>
+        <button class="btn btn-primary btn-sm" onclick="switchTab('purchase')" style="margin-left:auto;">Get Access</button>
+      </div>`;
+  }
+
+  /* account tab */
+  document.getElementById('accUsername').textContent  = u.username;
+  document.getElementById('accEmail').textContent     = u.email;
+  document.getElementById('accJoined').textContent    = formatDate(u.created_at);
+  document.getElementById('accLastLogin').textContent = u.last_login ? formatDate(u.last_login) : 'First login';
+  const ar = document.getElementById('accRole');
+  ar.textContent = u.role; ar.className = 'badge badge-' + u.role;
+
+  /* purchase tab: show/hide form */
+  if (u.paid) {
+    document.getElementById('alreadyHasAccess').style.display = 'block';
+    document.getElementById('purchaseForm').style.display     = 'none';
+  }
+}
+
+/* ── Files ── */
+function checkAndLoadFiles() {
+  const locked   = document.getElementById('downloadsLocked');
+  const fileWrap = document.getElementById('fileList');
+  const loading  = document.getElementById('filesLoading');
+  if (!currentUser.paid) {
+    locked.style.display   = 'block';
+    fileWrap.style.display = 'none';
+    return;
+  }
+  locked.style.display   = 'none';
+  fileWrap.style.display = 'block';
+  loadFiles();
+}
+
+async function loadFiles() {
+  const inner   = document.getElementById('fileListInner');
+  const noFiles = document.getElementById('noFilesMsg');
+  const loading = document.getElementById('filesLoading');
+  inner.innerHTML       = '';
+  noFiles.style.display = 'none';
+  loading.style.display = 'block';
+  try {
+    const res  = await apiFetch('/api/download/list');
+    const data = await res.json();
+    loading.style.display = 'none';
+    if (!res.ok || !data.files || data.files.length === 0) {
+      noFiles.style.display = 'block'; return;
+    }
+    data.files.forEach(f => {
+      const div = document.createElement('div');
+      div.className = 'dl-card';
+      div.innerHTML = `
+        <div class="dl-icon">${getFileIcon(f.name)}</div>
+        <div class="dl-info">
+          <div class="dl-name">${escHtml(f.name)}</div>
+          <div class="dl-size">${formatBytes(f.size)}</div>
+          <div class="dl-progress"><div class="dl-progress-bar" id="pb-${CSS.escape(f.name)}"></div></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="downloadFile('${escHtml(f.name)}')">
+          <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Download
+        </button>`;
+      inner.appendChild(div);
+    });
+  } catch {
+    loading.style.display = 'none';
+    noFiles.style.display = 'block';
+  }
+}
+
+async function downloadFile(filename) {
+  const bar = document.getElementById('pb-' + CSS.escape(filename));
+  if (bar) { bar.style.width = '30%'; }
+  try {
+    const res = await apiFetch('/api/download/file/' + encodeURIComponent(filename));
+    if (!res.ok) { showToast('Download failed – ' + (await res.json()).error, 'error'); if (bar) bar.style.width='0%'; return; }
+    if (bar) bar.style.width = '70%';
+    const blob = await res.blob();
+    if (bar) bar.style.width = '100%';
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+    showToast('Download started: ' + filename, 'success');
+    setTimeout(() => { if (bar) bar.style.width = '0%'; }, 2000);
+  } catch {
+    showToast('Download failed', 'error');
+    if (bar) bar.style.width = '0%';
+  }
+}
+
+/* quick download: grabs first file */
+document.getElementById('quickDownloadBtn').addEventListener('click', async () => {
+  if (!currentUser || !currentUser.paid) {
+    switchTab('purchase'); return;
+  }
+  switchTab('downloads');
+  await checkAndLoadFiles();
+  const first = document.querySelector('.dl-card .btn');
+  if (first) first.click();
+});
+
+/* ── Purchase request ── */
+document.getElementById('submitPurchaseBtn').addEventListener('click', async () => {
+  const note    = document.getElementById('purchaseNote').value.trim();
+  const msg     = document.getElementById('purchaseMsg');
+  const btn     = document.getElementById('submitPurchaseBtn');
+  btn.disabled  = true; btn.textContent = 'Submitting...';
+  msg.style.display = 'none';
+  try {
+    const res  = await apiFetch('/api/purchases', { method: 'POST', body: JSON.stringify({ note }) });
+    const data = await res.json();
+    msg.style.display    = 'block';
+    msg.style.background = res.ok ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)';
+    msg.style.border     = res.ok ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(239,68,68,0.3)';
+    msg.style.color      = res.ok ? 'var(--green)' : '#fca5a5';
+    msg.textContent      = data.message || data.error;
+    if (res.ok) {
+      document.getElementById('purchaseNote').value = '';
+      loadMyRequests();
+    }
+  } catch {
+    msg.style.display = 'block'; msg.textContent = 'Network error.';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Submit Request';
+  }
+});
+
+async function loadMyRequests() {
+  const list = document.getElementById('myRequestsList');
+  try {
+    const res  = await apiFetch('/api/purchases/mine');
+    const data = await res.json();
+    if (!res.ok || !data.requests || data.requests.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:0.88rem;">No requests yet.</div>';
+      return;
+    }
+    list.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Note</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody>${data.requests.map(r => `
+            <tr>
+              <td style="color:var(--text-muted);">${r.id}</td>
+              <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(r.note || '—')}</td>
+              <td><span class="badge badge-${r.status}">${r.status}</span></td>
+              <td style="color:var(--text-dim);">${formatDate(r.created_at)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } catch {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:0.88rem;padding:12px;">Could not load requests.</div>';
+  }
+}
+
+/* ── Tab switching ── */
+document.querySelectorAll('.sidebar-link[data-tab]').forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    switchTab(link.dataset.tab);
+  });
+});
+
+function switchTab(name) {
+  document.querySelectorAll('.dash-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sidebar-link[data-tab]').forEach(l => l.classList.remove('active'));
+  const section = document.getElementById('tab-' + name);
+  const link    = document.querySelector(`.sidebar-link[data-tab="${name}"]`);
+  if (section) section.classList.add('active');
+  if (link)    link.classList.add('active');
+  if (name === 'downloads') checkAndLoadFiles();
+}
+
+/* ── Refresh ── */
+document.getElementById('refreshFilesBtn').addEventListener('click', () => {
+  if (currentUser && currentUser.paid) loadFiles();
+});
+
+/* ── Logout ── */
+function logout() {
+  localStorage.removeItem('kyrex_token');
+  localStorage.removeItem('kyrex_user');
+  window.location.href = '/login.html';
+}
+document.getElementById('logoutBtn').addEventListener('click', e => { e.preventDefault(); logout(); });
+document.getElementById('logoutBtnMain').addEventListener('click', logout);
+
+/* ── Helpers ── */
+function getFileIcon(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  const gear   = '<span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span>';
+  const box    = '<span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>';
+  const fileTxt= '<span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>';
+  const folder = '<span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></span>';
+  const map = { exe: gear, zip: box, rar: box, '7z': box, pdf: fileTxt, txt: fileTxt };
+  return map[ext] || folder;
+}
+function formatBytes(b) {
+  if (!b) return '—';
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+function formatDate(s) {
+  if (!s) return '—';
+  return new Date(s.endsWith('Z') ? s : s + 'Z').toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Init ── */
+loadUser();
+</script>
+<script src="/js/fx.js"></script>
+</body>
+</html>

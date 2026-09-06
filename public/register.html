@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register – KyrexTweaks</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <a href="/" class="nav-logo">KyrexTweaks</a>
+  <div class="nav-links">
+    <a href="/" class="nav-link">Home</a>
+    <a href="/login.html" class="btn btn-outline btn-sm">Sign In</a>
+  </div>
+</nav>
+
+<!-- Background glow -->
+<div style="position:fixed;inset:0;background:radial-gradient(ellipse 70% 50% at 50% 0%,rgba(220,20,60,0.1) 0%,transparent 65%);pointer-events:none;z-index:0;"></div>
+
+<main class="auth-page">
+  <div class="auth-card" style="max-width:480px;">
+
+    <div class="auth-logo">KyrexTweaks</div>
+    <p class="auth-subtitle">Create your free account to get started</p>
+
+    <form class="auth-form" id="registerForm" novalidate>
+
+      <div class="form-group">
+        <label class="form-label" for="username">Username</label>
+        <input
+          class="form-control" type="text" id="username"
+          placeholder="e.g. KyrexUser99" autocomplete="username"
+          minlength="3" maxlength="30" required
+        />
+        <span style="font-size:0.78rem;color:var(--text-muted);">3–30 characters, letters and numbers</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="email">Email Address</label>
+        <input
+          class="form-control" type="email" id="email"
+          placeholder="you@example.com" autocomplete="email" required
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <div style="position:relative;">
+          <input
+            class="form-control" type="password" id="password"
+            placeholder="At least 6 characters" autocomplete="new-password"
+            minlength="6" required style="padding-right:44px;"
+          />
+          <button type="button" id="togglePw"
+            style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;line-height:1;display:flex;align-items:center;"
+            title="Toggle password visibility"><span class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span></button>
+        </div>
+        <!-- Password strength bar -->
+        <div id="strengthWrap" style="display:none;margin-top:6px;">
+          <div style="height:4px;border-radius:2px;background:var(--bg-card2);overflow:hidden;">
+            <div id="strengthBar" style="height:100%;width:0%;border-radius:2px;transition:width 0.3s,background 0.3s;"></div>
+          </div>
+          <span id="strengthLabel" style="font-size:0.75rem;color:var(--text-muted);margin-top:3px;display:block;"></span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="confirm">Confirm Password</label>
+        <input
+          class="form-control" type="password" id="confirm"
+          placeholder="Repeat your password" autocomplete="new-password"
+          required
+        />
+        <span id="matchMsg" style="font-size:0.78rem;display:none;"></span>
+      </div>
+
+      <!-- Terms -->
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.85rem;color:var(--text-dim);">
+        <input type="checkbox" id="agreeTerms" style="margin-top:3px;accent-color:var(--crimson);" required />
+        <span>I agree to the <a href="#" style="color:var(--crimson);">Terms of Service</a> and understand that download access requires a purchase.</span>
+      </label>
+
+      <button type="submit" class="btn btn-primary" id="submitBtn" style="width:100%;margin-top:4px;">
+        <span id="btnText">Create Account</span>
+        <span id="btnSpinner" class="spinner" style="display:none;width:18px;height:18px;"></span>
+      </button>
+
+      <div id="errorBox" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.35);border-radius:var(--radius);padding:12px 14px;font-size:0.88rem;color:#fca5a5;"></div>
+
+    </form>
+
+    <div class="divider"></div>
+
+    <div class="auth-footer">
+      Already have an account? <a href="/login.html">Sign in</a>
+    </div>
+
+  </div>
+</main>
+
+<script src="/js/app.js"></script>
+<script>
+  /* Redirect if already logged in */
+  (function () {
+    const token = localStorage.getItem('kyrex_token');
+    if (!token) return;
+    try {
+      const p = JSON.parse(atob(token.split('.')[1]));
+      if (p.exp * 1000 > Date.now()) {
+        window.location.href = p.role === 'admin' ? '/admin.html' : '/dashboard.html';
+      }
+    } catch {}
+  })();
+
+  /* Toggle password visibility */
+  document.getElementById('togglePw').addEventListener('click', function () {
+    const pw = document.getElementById('password');
+    pw.type = pw.type === 'password' ? 'text' : 'password';
+  });
+
+  /* Password strength */
+  document.getElementById('password').addEventListener('input', function () {
+    const val   = this.value;
+    const wrap  = document.getElementById('strengthWrap');
+    const bar   = document.getElementById('strengthBar');
+    const label = document.getElementById('strengthLabel');
+    if (!val) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+
+    let score = 0;
+    if (val.length >= 6)  score++;
+    if (val.length >= 10) score++;
+    if (/[A-Z]/.test(val)) score++;
+    if (/[0-9]/.test(val)) score++;
+    if (/[^A-Za-z0-9]/.test(val)) score++;
+
+    const levels = [
+      { w: '20%', bg: '#ef4444', t: 'Very Weak' },
+      { w: '40%', bg: '#f97316', t: 'Weak' },
+      { w: '60%', bg: '#eab308', t: 'Fair' },
+      { w: '80%', bg: '#84cc16', t: 'Strong' },
+      { w: '100%',bg: '#22c55e', t: 'Very Strong' },
+    ];
+    const lvl = levels[Math.min(score, 4)];
+    bar.style.width      = lvl.w;
+    bar.style.background = lvl.bg;
+    label.textContent    = lvl.t;
+    label.style.color    = lvl.bg;
+  });
+
+  /* Password match */
+  document.getElementById('confirm').addEventListener('input', function () {
+    const pw  = document.getElementById('password').value;
+    const msg = document.getElementById('matchMsg');
+    if (!this.value) { msg.style.display = 'none'; return; }
+    msg.style.display = 'block';
+    if (this.value === pw) {
+      msg.innerHTML  = '<span class="icon" style="color:var(--green)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Passwords match';
+      msg.style.color  = 'var(--green)';
+    } else {
+      msg.innerHTML  = '<span class="icon" style="color:var(--red)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span> Passwords do not match';
+      msg.style.color  = 'var(--red)';
+    }
+  });
+
+  /* Register form */
+  document.getElementById('registerForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const username = document.getElementById('username').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirm  = document.getElementById('confirm').value;
+    const agree    = document.getElementById('agreeTerms').checked;
+    const btn      = document.getElementById('submitBtn');
+    const btnText  = document.getElementById('btnText');
+    const spinner  = document.getElementById('btnSpinner');
+    const errorBox = document.getElementById('errorBox');
+
+    errorBox.style.display = 'none';
+
+    if (password !== confirm) {
+      errorBox.textContent   = 'Passwords do not match.';
+      errorBox.style.display = 'block';
+      return;
+    }
+    if (!agree) {
+      errorBox.textContent   = 'Please agree to the Terms of Service.';
+      errorBox.style.display = 'block';
+      return;
+    }
+
+    btn.disabled          = true;
+    btnText.style.display  = 'none';
+    spinner.style.display  = 'inline-block';
+
+    try {
+      const res  = await fetch('/api/auth/register', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ username, email, password })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        errorBox.textContent   = data.error || 'Registration failed';
+        errorBox.style.display = 'block';
+        return;
+      }
+
+      localStorage.setItem('kyrex_token', data.token);
+      localStorage.setItem('kyrex_user',  JSON.stringify(data.user));
+      showToast('Account created! Welcome, ' + data.user.username + '!', 'success');
+
+      setTimeout(() => {
+        window.location.href = '/dashboard.html';
+      }, 800);
+
+    } catch {
+      errorBox.textContent   = 'Network error. Please try again.';
+      errorBox.style.display = 'block';
+    } finally {
+      btn.disabled          = false;
+      btnText.style.display  = 'inline';
+      spinner.style.display  = 'none';
+    }
+  });
+</script>
+<script src="/js/fx.js"></script>
+</body>
+</html>
