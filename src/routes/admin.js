@@ -1,89 +1,112 @@
 'use strict';
 const express                    = require('express');
-const path                       = require('path');
-const fs                         = require('fs');
 const multer                     = require('multer');
 const { auth, requireAdmin }     = require('../middleware');
-const { users, logs, purchases } = require('../database');
+const { users, logs, purchases, storage } = require('../database');
 
-const router        = express.Router();
-const DOWNLOADS_DIR = path.join(__dirname, '..', '..', 'downloads');
-if (!fs.existsSync(DOWNLOADS_DIR)) fs.mkdirSync(DOWNLOADS_DIR, { recursive:true });
+const router = express.Router();
 
-const storage = multer.diskStorage({
-  destination: (_,__,cb) => cb(null, DOWNLOADS_DIR),
-  filename:    (_,file,cb) => cb(null, path.basename(file.originalname))
-});
-const upload = multer({ storage, limits:{ fileSize:500*1024*1024 } });
+/* Use memory storage – file goes straight to Supabase Storage */
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
 
 router.use(auth, requireAdmin);
 
-router.get('/stats',   (_, res) => res.json(users.stats()));
-router.get('/users',   (_, res) => res.json({ users: users.findAll() }));
-
-router.patch('/users/:id/grant', (req, res) => {
-  const id = Number(req.params.id);
-  const t  = users.findById(id);
-  if (!t) return res.status(404).json({ error:'User not found' });
-  if (t.role==='admin') return res.status(400).json({ error:'Cannot modify admin' });
-  users.grantAccess(id);
-  res.json({ message:`Access granted to ${t.username}` });
+/* GET /api/admin/stats */
+router.get('/stats', async (_, res) => {
+  res.json(await users.stats());
 });
 
-router.patch('/users/:id/revoke', (req, res) => {
-  const id = Number(req.params.id);
-  const t  = users.findById(id);
-  if (!t) return res.status(404).json({ error:'User not found' });
-  if (t.role==='admin') return res.status(400).json({ error:'Cannot modify admin' });
-  users.revokeAccess(id);
-  res.json({ message:`Access revoked from ${t.username}` });
+/* GET /api/admin/users */
+router.get('/users', async (_, res) => {
+  res.json({ users: await users.findAll() });
 });
 
-router.delete('/users/:id', (req, res) => {
+/* PATCH /api/admin/users/:id/grant */
+router.patch('/users/:id/grant', async (req, res) => {
   const id = Number(req.params.id);
-  const t  = users.findById(id);
-  if (!t) return res.status(404).json({ error:'User not found' });
-  if (t.role==='admin') return res.status(400).json({ error:'Cannot delete admin' });
-  users.delete(id);
-  res.json({ message:`User ${t.username} deleted` });
+  const t  = await users.findById(id);
+  if (!t)                 return res.status(404).json({ error: 'User not found' });
+  if (t.role === 'admin') return res.status(400).json({ error: 'Cannot modify admin' });
+  await users.grantAccess(id);
+  res.json({ message: `Access granted to ${t.username}` });
 });
 
-router.get('/purchases', (_, res) => res.json({ requests: purchases.findAll() }));
+/* PATCH /api/admin/users/:id/revoke */
+router.patch('/users/:id/revoke', async (req, res) => {
+  const id = Number(req.params.id);
+  const t  = await users.findById(id);
+  if (!t)                 return res.status(404).json({ error: 'User not found' });
+  if (t.role === 'admin') return res.status(400).json({ error: 'Cannot modify admin' });
+  await users.revokeAccess(id);
+  res.json({ message: `Access revoked from ${t.username}` });
+});
 
-router.patch('/purchases/:id', (req, res) => {
+/* DELETE /api/admin/users/:id */
+router.delete('/users/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  const t  = await users.findById(id);
+  if (!t)                 return res.status(404).json({ error: 'User not found' });
+  if (t.role === 'admin') return res.status(400).json({ error: 'Cannot delete admin' });
+  await users.delete(id);
+  res.json({ message: `User ${t.username} deleted` });
+});
+
+/* GET /api/admin/purchases */
+router.get('/purchases', async (_, res) => {
+  res.json({ requests: await purchases.findAll() });
+});
+
+/* PATCH /api/admin/purchases/:id */
+router.patch('/purchases/:id', async (req, res) => {
   const id     = Number(req.params.id);
   const status = req.body.status;
-  if (!['approved','rejected','pending'].includes(status)) return res.status(400).json({ error:'Invalid status' });
-  purchases.updateStatus(status, id);
-  if (status==='approved') {
-    const pr = purchases.findById(id);
-    if (pr) users.grantAccess(pr.user_id);
+  if (!['approved', 'rejected', 'pending'].includes(status))
+    return res.status(400).json({ error: 'Invalid status' });
+  await purchases.updateStatus(status, id);
+  if (status === 'approved') {
+    const pr = await purchases.findById(id);
+    if (pr) await users.grantAccess(pr.user_id);
   }
-  res.json({ message:`Request #${id} set to ${status}` });
+  res.json({ message: `Request #${id} set to ${status}` });
 });
 
-router.get('/logs', (_, res) => res.json({ logs: logs.recent() }));
-
-router.get('/files', (_, res) => {
-  if (!fs.existsSync(DOWNLOADS_DIR)) return res.json({ files:[] });
-  const files = fs.readdirSync(DOWNLOADS_DIR).filter(f=>!f.startsWith('.')).map(f=>{
-    const s = fs.statSync(path.join(DOWNLOADS_DIR,f));
-    return { name:f, size:s.size, modified:s.mtime };
-  });
-  res.json({ files });
+/* GET /api/admin/logs */
+router.get('/logs', async (_, res) => {
+  res.json({ logs: await logs.recent() });
 });
 
-router.post('/files/upload', upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error:'No file uploaded' });
-  res.json({ message:'Uploaded', filename:req.file.filename });
+/* GET /api/admin/files */
+router.get('/files', async (_, res) => {
+  try {
+    const files = await storage.listFiles();
+    res.json({ files: files.map(f => ({ name: f.name, size: f.metadata?.size || 0, modified: f.updated_at })) });
+  } catch (e) {
+    res.status(500).json({ error: 'Cannot list files' });
+  }
 });
 
-router.delete('/files/:filename', (req, res) => {
-  const filename = path.basename(req.params.filename);
-  const filepath = path.join(DOWNLOADS_DIR, filename);
-  if (!fs.existsSync(filepath)) return res.status(404).json({ error:'Not found' });
-  fs.unlinkSync(filepath);
-  res.json({ message:`${filename} deleted` });
+/* POST /api/admin/files/upload */
+router.post('/files/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    await storage.uploadFile(req.file.originalname, req.file.buffer, req.file.mimetype);
+    res.json({ message: 'Uploaded successfully', filename: req.file.originalname });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Upload failed' });
+  }
+});
+
+/* DELETE /api/admin/files/:filename */
+router.delete('/files/:filename', async (req, res) => {
+  try {
+    const filename = req.params.filename.replace(/\.\./g, '');
+    await storage.deleteFile(filename);
+    res.json({ message: `${filename} deleted` });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Delete failed' });
+  }
 });
 
 module.exports = router;

@@ -1,101 +1,153 @@
 'use strict';
-const { DatabaseSync } = require('node:sqlite');
-const path  = require('path');
-const bcrypt = require('bcryptjs');
-const fs    = require('fs');
+const { createClient } = require('@supabase/supabase-js');
 
-const dataDir = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
-if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY  // service_role key (bypasses RLS)
+);
 
-const db = new DatabaseSync(path.join(dataDir, 'kyrex.db'));
-
-db.exec(`PRAGMA journal_mode = WAL;`);
-db.exec(`PRAGMA foreign_keys = ON;`);
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    username    TEXT    NOT NULL UNIQUE COLLATE NOCASE,
-    email       TEXT    NOT NULL UNIQUE COLLATE NOCASE,
-    password    TEXT    NOT NULL,
-    role        TEXT    NOT NULL DEFAULT 'newbie',
-    paid        INTEGER NOT NULL DEFAULT 0,
-    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-    last_login  TEXT
-  );
-  CREATE TABLE IF NOT EXISTS download_logs (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    filename      TEXT    NOT NULL,
-    ip            TEXT,
-    downloaded_at TEXT    NOT NULL DEFAULT (datetime('now'))
-  );
-  CREATE TABLE IF NOT EXISTS purchase_requests (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    note       TEXT,
-    status     TEXT    NOT NULL DEFAULT 'pending',
-    created_at TEXT    NOT NULL DEFAULT (datetime('now'))
-  );
-`);
-
-/* helpers */
-function run(sql, params = []) {
-  return db.prepare(sql).run(...params);
-}
-function get(sql, params = []) {
-  return db.prepare(sql).get(...params);
-}
-function all(sql, params = []) {
-  return db.prepare(sql).all(...params);
-}
-
-/* seed admin */
-const adminExists = get("SELECT id FROM users WHERE role='admin' LIMIT 1");
-if (!adminExists) {
-  const hash = bcrypt.hashSync('admin123', 12);
-  run("INSERT INTO users (username,email,password,role,paid) VALUES (?,?,?,'admin',1)",
-      ['admin', 'admin@kyrextweaks.com', hash]);
-  console.log('[DB] Admin seeded  →  admin / admin123');
-}
-
+/* ── Users ── */
 const users = {
-  findByEmail:     (email)    => get('SELECT * FROM users WHERE email=?', [email]),
-  findByUsername:  (username) => get('SELECT * FROM users WHERE username=?', [username]),
-  findById:        (id)       => get('SELECT * FROM users WHERE id=?', [id]),
-  findAll:         ()         => all('SELECT id,username,email,role,paid,created_at,last_login FROM users ORDER BY created_at DESC'),
-  create:          (u)        => run('INSERT INTO users (username,email,password,role,paid) VALUES (?,?,?,?,?)',
-                                     [u.username, u.email, u.password, u.role, u.paid]),
-  grantAccess:     (id)       => run("UPDATE users SET role='buyer', paid=1 WHERE id=?", [id]),
-  revokeAccess:    (id)       => run("UPDATE users SET role='newbie', paid=0 WHERE id=?", [id]),
-  updateLastLogin: (id)       => run("UPDATE users SET last_login=datetime('now') WHERE id=?", [id]),
-  delete:          (id)       => run('DELETE FROM users WHERE id=?', [id]),
-  stats: () => get(`
-    SELECT
-      (SELECT COUNT(*) FROM users)                     AS total,
-      (SELECT COUNT(*) FROM users WHERE role='buyer')  AS buyers,
-      (SELECT COUNT(*) FROM users WHERE role='newbie') AS newbies,
-      (SELECT COUNT(*) FROM users WHERE role='admin')  AS admins,
-      (SELECT COUNT(*) FROM download_logs)             AS downloads
-  `),
+  async findByEmail(email) {
+    const { data } = await supabase.from('users').select('*').ilike('email', email).single();
+    return data;
+  },
+  async findByUsername(username) {
+    const { data } = await supabase.from('users').select('*').ilike('username', username).single();
+    return data;
+  },
+  async findById(id) {
+    const { data } = await supabase.from('users').select('*').eq('id', id).single();
+    return data;
+  },
+  async findAll() {
+    const { data } = await supabase
+      .from('users')
+      .select('id,username,email,role,paid,created_at,last_login')
+      .order('created_at', { ascending: false });
+    return data || [];
+  },
+  async create({ username, email, password, role, paid }) {
+    const { data, error } = await supabase
+      .from('users')
+      .insert({ username, email, password, role, paid })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+  async grantAccess(id) {
+    await supabase.from('users').update({ role: 'buyer', paid: true }).eq('id', id);
+  },
+  async revokeAccess(id) {
+    await supabase.from('users').update({ role: 'newbie', paid: false }).eq('id', id);
+  },
+  async updateLastLogin(id) {
+    await supabase.from('users').update({ last_login: new Date().toISOString() }).eq('id', id);
+  },
+  async delete(id) {
+    await supabase.from('users').delete().eq('id', id);
+  },
+  async stats() {
+    const [total, buyers, newbies, admins, downloads] = await Promise.all([
+      supabase.from('users').select('*', { count: 'exact', head: true }),
+      supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'buyer'),
+      supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'newbie'),
+      supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'admin'),
+      supabase.from('download_logs').select('*', { count: 'exact', head: true }),
+    ]);
+    return {
+      total:     total.count     || 0,
+      buyers:    buyers.count    || 0,
+      newbies:   newbies.count   || 0,
+      admins:    admins.count    || 0,
+      downloads: downloads.count || 0,
+    };
+  },
 };
 
+/* ── Logs ── */
 const logs = {
-  add:    (userId, filename, ip) => run('INSERT INTO download_logs (user_id,filename,ip) VALUES (?,?,?)', [userId, filename, ip]),
-  recent: ()                     => all(`
-    SELECT dl.id, dl.filename, dl.ip, dl.downloaded_at, u.username
-    FROM download_logs dl JOIN users u ON u.id=dl.user_id
-    ORDER BY dl.downloaded_at DESC LIMIT 100
-  `),
+  async add(userId, filename, ip) {
+    await supabase.from('download_logs').insert({ user_id: userId, filename, ip });
+  },
+  async recent() {
+    const { data } = await supabase
+      .from('download_logs')
+      .select('id, filename, ip, downloaded_at, users(username)')
+      .order('downloaded_at', { ascending: false })
+      .limit(100);
+    return (data || []).map(l => ({ ...l, username: l.users?.username }));
+  },
 };
 
+/* ── Purchases ── */
 const purchases = {
-  create:       (userId, note)   => run('INSERT INTO purchase_requests (user_id,note) VALUES (?,?)', [userId, note]),
-  findAll:      ()               => all(`SELECT pr.*, u.username, u.email FROM purchase_requests pr JOIN users u ON u.id=pr.user_id ORDER BY pr.created_at DESC`),
-  findByUser:   (userId)         => all('SELECT * FROM purchase_requests WHERE user_id=? ORDER BY created_at DESC', [userId]),
-  findById:     (id)             => get('SELECT * FROM purchase_requests WHERE id=?', [id]),
-  updateStatus: (status, id)     => run('UPDATE purchase_requests SET status=? WHERE id=?', [status, id]),
-  countPending: (userId)         => get("SELECT COUNT(*) AS cnt FROM purchase_requests WHERE user_id=? AND status='pending'", [userId]),
+  async create(userId, note) {
+    const { error } = await supabase
+      .from('purchase_requests')
+      .insert({ user_id: userId, note });
+    if (error) throw error;
+  },
+  async findAll() {
+    const { data } = await supabase
+      .from('purchase_requests')
+      .select('*, users(username, email)')
+      .order('created_at', { ascending: false });
+    return (data || []).map(r => ({ ...r, username: r.users?.username, email: r.users?.email }));
+  },
+  async findByUser(userId) {
+    const { data } = await supabase
+      .from('purchase_requests')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    return data || [];
+  },
+  async findById(id) {
+    const { data } = await supabase
+      .from('purchase_requests')
+      .select('*')
+      .eq('id', id)
+      .single();
+    return data;
+  },
+  async updateStatus(status, id) {
+    await supabase.from('purchase_requests').update({ status }).eq('id', id);
+  },
+  async countPending(userId) {
+    const { count } = await supabase
+      .from('purchase_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'pending');
+    return { cnt: count || 0 };
+  },
 };
 
-module.exports = { db, users, logs, purchases };
+/* ── Storage (file uploads/downloads) ── */
+const storage = {
+  async listFiles() {
+    const { data } = await supabase.storage.from('downloads').list('', { sortBy: { column: 'name' } });
+    return (data || []).filter(f => f.name !== '.emptyFolderPlaceholder');
+  },
+  async uploadFile(filename, buffer, mimetype) {
+    const { error } = await supabase.storage
+      .from('downloads')
+      .upload(filename, buffer, { contentType: mimetype, upsert: true });
+    if (error) throw error;
+  },
+  async deleteFile(filename) {
+    const { error } = await supabase.storage.from('downloads').remove([filename]);
+    if (error) throw error;
+  },
+  async getSignedUrl(filename) {
+    const { data, error } = await supabase.storage
+      .from('downloads')
+      .createSignedUrl(filename, 60); // 60 seconds
+    if (error) throw error;
+    return data.signedUrl;
+  },
+};
+
+module.exports = { supabase, users, logs, purchases, storage };
