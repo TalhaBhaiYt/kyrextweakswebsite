@@ -25,8 +25,8 @@ router.post('/register', async (req, res) => {
     const user = await users.create({ username, email, password: hash, role: 'newbie', paid: false });
     res.status(201).json({ token: signToken(user), user: safe(user) });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Registration failed' });
+    console.error('REGISTER ERROR:', e.message, e.stack);
+    res.status(500).json({ error: 'Registration failed: ' + e.message });
   }
 });
 

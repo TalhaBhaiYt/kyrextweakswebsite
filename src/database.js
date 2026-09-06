@@ -9,15 +9,15 @@ const supabase = createClient(
 /* ── Users ── */
 const users = {
   async findByEmail(email) {
-    const { data } = await supabase.from('users').select('*').ilike('email', email).single();
+    const { data } = await supabase.from('users').select('*').ilike('email', email).maybeSingle();
     return data;
   },
   async findByUsername(username) {
-    const { data } = await supabase.from('users').select('*').ilike('username', username).single();
+    const { data } = await supabase.from('users').select('*').ilike('username', username).maybeSingle();
     return data;
   },
   async findById(id) {
-    const { data } = await supabase.from('users').select('*').eq('id', id).single();
+    const { data } = await supabase.from('users').select('*').eq('id', id).maybeSingle();
     return data;
   },
   async findAll() {
@@ -109,7 +109,7 @@ const purchases = {
       .from('purchase_requests')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
     return data;
   },
   async updateStatus(status, id) {
