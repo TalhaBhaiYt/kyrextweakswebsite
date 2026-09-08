@@ -387,16 +387,6 @@ async function uploadFile(file) {
   }
 }
 
-    xhr.addEventListener('error', () => {
-      showToast('Upload failed – network error', 'error');
-      barWrap.style.display = 'none';
-      resolve();
-    });
-
-    xhr.send(formData);
-  });
-}
-
 async function deleteFile(filename) {
   openConfirm({
     icon: svgIcon(ICON.trash, '32'), title: `Delete "${filename}"?`,
