@@ -21,7 +21,18 @@ const ICON = {
 };
 
 /* ── Auth guard: admin only ── */
-if (!requireAdmin()) { /* requireAdmin() redirects if needed */ }
+let __adminReady = false;
+(async () => {
+  if (!(await requireAdmin())) return;
+  __adminReady = true;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAdmin, { once: true });
+  } else {
+    initAdmin();
+  }
+})();
+
+function initAdmin() {
 
 /* ── State ── */
 let allUsers     = [];
@@ -31,7 +42,7 @@ let purchaseFilter = 'all';
 let currentAdminId = null;
 
 /* ── Init ── */
-document.addEventListener('DOMContentLoaded', () => {
+(() => {
   /* display admin name */
   const p = decodeToken(localStorage.getItem('kyrex_token'));
   if (p) {
@@ -88,7 +99,11 @@ document.addEventListener('DOMContentLoaded', () => {
   loadPurchases();
   loadFiles();
   loadLogs();
-});
+
+  /* auto-refresh every 30s */
+  setInterval(() => { loadStats(); loadPurchases(); }, 30000);
+})();
+}
 
 /* ══════════════════════════════════════════════════
    TAB SWITCHING
@@ -503,6 +518,5 @@ function setTableError(tbodyId, cols, msg = 'Error loading data') {
 }
 
 /* ══════════════════════════════════════════════════
-   AUTO-REFRESH every 30 s (stats + purchases)
+   AUTO-REFRESH every 30 s (stats + purchases) – handled in initAdmin
    ══════════════════════════════════════════════════ */
-setInterval(() => { loadStats(); loadPurchases(); }, 30000);

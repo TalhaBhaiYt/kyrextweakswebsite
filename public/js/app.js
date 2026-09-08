@@ -61,11 +61,17 @@ function isLoggedIn() {
 }
 
 /* ── Require admin – call at top of admin pages ── */
-function requireAdmin() {
+async function requireAdmin() {
   if (!isLoggedIn()) { window.location.href = '/login.html'; return false; }
-  const p = decodeToken(localStorage.getItem('kyrex_token'));
-  if (p && p.role !== 'admin') { window.location.href = '/dashboard.html'; return false; }
-  return true;
+  try {
+    const res  = await apiFetch('/api/auth/me');
+    const data = await res.json();
+    if (!res.ok || data.user?.role !== 'admin') { window.location.href = '/dashboard.html'; return false; }
+    return true;
+  } catch {
+    window.location.href = '/login.html';
+    return false;
+  }
 }
 
 /* ── Escape HTML to prevent XSS ── */
