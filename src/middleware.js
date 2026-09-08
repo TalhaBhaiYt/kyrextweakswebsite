@@ -28,7 +28,8 @@ async function auth(req, res, next) {
 }
 
 function requireBuyer(req, res, next) {
-  if (req.user.paid && (req.user.role === 'buyer' || req.user.role === 'admin')) return next();
+  if (req.user.role === 'admin') return next();
+  if (req.user.paid && req.user.role === 'buyer') return next();
   res.status(403).json({ error: 'Purchase required to access downloads' });
 }
 

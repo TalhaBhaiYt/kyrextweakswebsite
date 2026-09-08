@@ -127,26 +127,45 @@ const purchases = {
 
 /* ── Storage (file uploads/downloads) ── */
 const storage = {
+  BUCKET: 'downloads',
+  async ensureBucket() {
+    const { data: buckets } = await supabase.storage.listBuckets();
+    if (!buckets.find(b => b.name === this.BUCKET)) {
+      const { error } = await supabase.storage.createBucket(this.BUCKET, { public: false });
+      if (error && !/already exists/i.test(error.message)) throw error;
+    }
+  },
   async listFiles() {
-    const { data } = await supabase.storage.from('downloads').list('', { sortBy: { column: 'name' } });
+    await this.ensureBucket();
+    const { data, error } = await supabase.storage.from(this.BUCKET).list('', { sortBy: { column: 'name' } });
+    if (error) throw error;
     return (data || []).filter(f => f.name !== '.emptyFolderPlaceholder');
   },
   async uploadFile(filename, buffer, mimetype) {
+    await this.ensureBucket();
     const { error } = await supabase.storage
-      .from('downloads')
+      .from(this.BUCKET)
       .upload(filename, buffer, { contentType: mimetype, upsert: true });
     if (error) throw error;
   },
   async deleteFile(filename) {
-    const { error } = await supabase.storage.from('downloads').remove([filename]);
+    const { error } = await supabase.storage.from(this.BUCKET).remove([filename]);
     if (error) throw error;
   },
   async getSignedUrl(filename) {
     const { data, error } = await supabase.storage
-      .from('downloads')
+      .from(this.BUCKET)
       .createSignedUrl(filename, 60); // 60 seconds
     if (error) throw error;
     return data.signedUrl;
+  },
+  async createSignedUploadUrl(filename) {
+    await this.ensureBucket();
+    const { data, error } = await supabase.storage
+      .from(this.BUCKET)
+      .createSignedUploadUrl(filename);
+    if (error) throw error;
+    return data; // { signedUrl, path, token }
   },
 };
 

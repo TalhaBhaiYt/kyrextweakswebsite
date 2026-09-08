@@ -338,14 +338,23 @@ async function uploadFile(file) {
   barFill.style.width   = '0%';
   barPct.textContent    = '0%';
 
-  const formData = new FormData();
-  formData.append('file', file);
+  try {
+    /* Step 1: ask our API for a signed upload URL (tiny JSON request) */
+    const meta = await apiFetch('/api/admin/files/upload-url', {
+      method: 'POST',
+      body: JSON.stringify({ filename: file.name, mimetype: file.type || 'application/octet-stream' })
+    });
+    const sig = await meta.json();
+    if (!meta.ok) {
+      showToast((sig.error || 'Upload failed') + (sig.detail ? ' – ' + sig.detail : ''), 'error');
+      barWrap.style.display = 'none';
+      return;
+    }
 
-  return new Promise((resolve) => {
+    /* Step 2: PUT the file directly to Supabase Storage (no server body limit) */
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/admin/files/upload');
-    xhr.setRequestHeader('Authorization', 'Bearer ' + localStorage.getItem('kyrex_token'));
-
+    xhr.open('PUT', sig.signedUrl);
+    xhr.setRequestHeader('Content-Type', sig.mimetype);
     xhr.upload.addEventListener('progress', e => {
       if (e.lengthComputable) {
         const pct = Math.round((e.loaded / e.total) * 100);
@@ -353,21 +362,30 @@ async function uploadFile(file) {
         barPct.textContent  = pct + '%';
       }
     });
-
-    xhr.addEventListener('load', () => {
-      setTimeout(() => { barWrap.style.display = 'none'; }, 1500);
-      if (xhr.status === 200) {
-        showToast('File uploaded successfully', 'success');
-        loadFiles();
-      } else {
-        try {
-          const err = JSON.parse(xhr.responseText);
-          showToast(err.error || 'Upload failed', 'error');
-        } catch { showToast('Upload failed', 'error'); }
-      }
-      document.getElementById('fileInput').value = '';
-      resolve();
+    await new Promise((resolve) => {
+      xhr.addEventListener('load', () => {
+        setTimeout(() => { barWrap.style.display = 'none'; }, 1500);
+        if (xhr.status === 200) {
+          showToast('File uploaded successfully', 'success');
+          loadFiles();
+        } else {
+          showToast('Upload failed – Supabase ' + xhr.status, 'error');
+        }
+        document.getElementById('fileInput').value = '';
+        resolve();
+      });
+      xhr.addEventListener('error', () => {
+        showToast('Upload failed – network error', 'error');
+        barWrap.style.display = 'none';
+        resolve();
+      });
+      xhr.send(file);
     });
+  } catch (e) {
+    showToast('Upload failed – ' + (e.message || e), 'error');
+    barWrap.style.display = 'none';
+  }
+}
 
     xhr.addEventListener('error', () => {
       showToast('Upload failed – network error', 'error');

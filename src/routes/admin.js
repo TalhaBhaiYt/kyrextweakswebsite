@@ -85,15 +85,29 @@ router.get('/files', async (_, res) => {
   }
 });
 
-/* POST /api/admin/files/upload */
+/* POST /api/admin/files/upload-url — direct-to-Supabase upload (bypasses server body limits) */
+router.post('/files/upload-url', async (req, res) => {
+  try {
+    const { filename, mimetype } = req.body || {};
+    if (!filename) return res.status(400).json({ error: 'filename required' });
+    const safe = filename.replace(/[^\w.\-]/g, '_');
+    const data = await storage.createSignedUploadUrl(safe);
+    res.json({ ...data, filename: safe, mimetype: mimetype || 'application/octet-stream' });
+  } catch (e) {
+    console.error('upload-url error:', e);
+    res.status(500).json({ error: 'Cannot create upload URL', detail: e.message || String(e) });
+  }
+});
+
+/* POST /api/admin/files/upload — fallback for small files via server */
 router.post('/files/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     await storage.uploadFile(req.file.originalname, req.file.buffer, req.file.mimetype);
     res.json({ message: 'Uploaded successfully', filename: req.file.originalname });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Upload failed' });
+    console.error('Upload error:', e);
+    res.status(500).json({ error: 'Upload failed', detail: e.message || String(e) });
   }
 });
 

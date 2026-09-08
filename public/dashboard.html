@@ -109,6 +109,9 @@
       <a class="sidebar-link" data-tab="account" href="#">
         <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span> Account
       </a>
+      <a class="sidebar-link" id="adminLink" href="/admin.html" style="display:none;color:var(--crimson);">
+        <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> Admin Panel
+      </a>
       <div class="divider" style="margin:12px 0;"></div>
       <a class="sidebar-link" href="/" style="color:var(--text-muted);">
         <span class="sidebar-icon icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></span> Back to Site
@@ -164,7 +167,7 @@
           <div class="divider"></div>
           <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;">
             <li style="font-size:0.85rem;color:var(--text-dim);display:flex;gap:8px;"><span style="color:var(--crimson);">→</span> 150+ optimization tweaks</li>
-            <li style="font-size:0.85rem;color:var(--text-dim);display:flex;gap:8px;"><span style="color:var(--crimson);">→</span> Windows 7 / 8.1 / 10 / 11</li>
+            <li style="font-size:0.85rem;color:var(--text-dim);display:flex;gap:8px;"><span style="color:var(--crimson);">→</span> Windows 10 (32 & 64-bit)</li>
             <li style="font-size:0.85rem;color:var(--text-dim);display:flex;gap:8px;"><span style="color:var(--crimson);">→</span> 24 languages supported</li>
             <li style="font-size:0.85rem;color:var(--text-dim);display:flex;gap:8px;"><span style="color:var(--crimson);">→</span> Portable .exe, no install</li>
           </ul>
@@ -410,7 +413,7 @@ function renderUser() {
   document.getElementById('statRole').textContent  = u.role.charAt(0).toUpperCase() + u.role.slice(1);
 
   const statusEl = document.getElementById('statStatus');
-  if (u.paid) {
+  if (u.paid || u.role === 'admin') {
     statusEl.innerHTML = '<span class="status-dot green"></span> Active';
     document.getElementById('statAccess').innerHTML = '<span style="display:inline-flex;align-items:center;gap:4px;"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Full</span>';
   } else {
@@ -419,6 +422,12 @@ function renderUser() {
   }
 
   document.getElementById('statJoined').textContent = formatDate(u.created_at);
+
+  /* admin link */
+  if (u.role === 'admin') {
+    const al = document.getElementById('adminLink');
+    if (al) al.style.display = '';
+  }
 
   /* access banner */
   const banner = document.getElementById('accessBanner');
@@ -458,7 +467,7 @@ function checkAndLoadFiles() {
   const locked   = document.getElementById('downloadsLocked');
   const fileWrap = document.getElementById('fileList');
   const loading  = document.getElementById('filesLoading');
-  if (!currentUser.paid) {
+  if (!currentUser.paid && currentUser.role !== 'admin') {
     locked.style.display   = 'block';
     fileWrap.style.display = 'none';
     return;
@@ -526,7 +535,7 @@ async function downloadFile(filename) {
 
 /* quick download: grabs first file */
 document.getElementById('quickDownloadBtn').addEventListener('click', async () => {
-  if (!currentUser || !currentUser.paid) {
+  if (!currentUser || (!currentUser.paid && currentUser.role !== 'admin')) {
     switchTab('purchase'); return;
   }
   switchTab('downloads');
@@ -609,7 +618,7 @@ function switchTab(name) {
 
 /* ── Refresh ── */
 document.getElementById('refreshFilesBtn').addEventListener('click', () => {
-  if (currentUser && currentUser.paid) loadFiles();
+  if (currentUser && (currentUser.paid || currentUser.role === 'admin')) loadFiles();
 });
 
 /* ── Logout ── */
