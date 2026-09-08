@@ -25,14 +25,8 @@ let __adminReady = false;
 (async () => {
   if (!(await requireAdmin())) return;
   __adminReady = true;
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAdmin, { once: true });
-  } else {
-    initAdmin();
-  }
+  document.dispatchEvent(new Event('admin:ready'));
 })();
-
-function initAdmin() {
 
 /* ── State ── */
 let allUsers     = [];
@@ -42,7 +36,7 @@ let purchaseFilter = 'all';
 let currentAdminId = null;
 
 /* ── Init ── */
-(() => {
+const startInit = () => {
   /* display admin name */
   const p = decodeToken(localStorage.getItem('kyrex_token'));
   if (p) {
@@ -102,8 +96,14 @@ let currentAdminId = null;
 
   /* auto-refresh every 30s */
   setInterval(() => { loadStats(); loadPurchases(); }, 30000);
-})();
-}
+};
+document.addEventListener('admin:ready', () => {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startInit, { once: true });
+  } else {
+    startInit();
+  }
+});
 
 /* ══════════════════════════════════════════════════
    TAB SWITCHING
@@ -146,11 +146,11 @@ async function loadUsers() {
   try {
     const res  = await apiFetch('/api/admin/users');
     const data = await res.json();
-    if (!res.ok) { setTableError('usersBody', 7, data.error); return; }
+    if (!res.ok) { setTableError('usersBody', 7, data.error || 'HTTP ' + res.status); return; }
     allUsers = data.users || [];
     renderUsers();
     loadStats();
-  } catch { setTableError('usersBody', 7, 'Network error'); }
+  } catch (e) { setTableError('usersBody', 7, 'Network error: ' + (e?.message || e)); }
 }
 
 function renderUsers() {
@@ -289,7 +289,7 @@ async function loadPurchases() {
     const pending = allPurchases.filter(p => p.status === 'pending').length;
     const dot = document.getElementById('pendingDot');
     dot.style.display = pending > 0 ? 'inline-block' : 'none';
-  } catch { setTableError('purchasesBody', 7, 'Network error'); }
+  } catch (e) { setTableError('purchasesBody', 7, 'Network error: ' + (e?.message || e)); }
 }
 
 function renderPurchases() {
@@ -381,7 +381,7 @@ async function loadFiles() {
           </div>
         </td>
       </tr>`).join('');
-  } catch { setTableError('filesBody', 4, 'Network error'); }
+  } catch (e) { setTableError('filesBody', 4, 'Network error: ' + (e?.message || e)); }
 }
 
 async function uploadFile(file) {
@@ -471,7 +471,7 @@ async function loadLogs() {
     if (!res.ok) { setTableError('logsBody', 5, data.error); return; }
     allLogs = data.logs || [];
     renderLogs();
-  } catch { setTableError('logsBody', 5, 'Network error'); }
+  } catch (e) { setTableError('logsBody', 5, 'Network error: ' + (e?.message || e)); }
 }
 
 function renderLogs() {
