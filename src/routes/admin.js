@@ -41,6 +41,27 @@ router.patch('/users/:id/revoke', async (req, res) => {
   res.json({ message: `Access revoked from ${t.username}` });
 });
 
+/* PATCH /api/admin/users/:id/promote — make a user an admin */
+router.patch('/users/:id/promote', async (req, res) => {
+  const id = Number(req.params.id);
+  const t  = await users.findById(id);
+  if (!t)                 return res.status(404).json({ error: 'User not found' });
+  if (t.role === 'admin') return res.status(400).json({ error: 'User is already an admin' });
+  await users.setRole(id, 'admin');
+  res.json({ message: `${t.username} is now an admin` });
+});
+
+/* PATCH /api/admin/users/:id/demote — remove admin role */
+router.patch('/users/:id/demote', async (req, res) => {
+  const id = Number(req.params.id);
+  const t  = await users.findById(id);
+  if (!t)                       return res.status(404).json({ error: 'User not found' });
+  if (t.role !== 'admin')       return res.status(400).json({ error: 'User is not an admin' });
+  if (t.id === req.user.id)     return res.status(400).json({ error: 'You cannot demote yourself' });
+  await users.setRole(id, 'newbie');
+  res.json({ message: `${t.username} demoted to newbie` });
+});
+
 /* DELETE /api/admin/users/:id */
 router.delete('/users/:id', async (req, res) => {
   const id = Number(req.params.id);

@@ -17,6 +17,7 @@ const ICON = {
   checkSimple:'<polyline points="20 6 9 17 4 12"/>',
   xSimple:    '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
   refresh:    '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>',
+  shield:     '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
 };
 
 /* ── Auth guard: admin only ── */
@@ -27,12 +28,16 @@ let allUsers     = [];
 let allPurchases = [];
 let allLogs      = [];
 let purchaseFilter = 'all';
+let currentAdminId = null;
 
 /* ── Init ── */
 document.addEventListener('DOMContentLoaded', () => {
   /* display admin name */
   const p = decodeToken(localStorage.getItem('kyrex_token'));
-  if (p) document.getElementById('adminNameDisplay').textContent = p.username;
+  if (p) {
+    currentAdminId = p.id;
+    document.getElementById('adminNameDisplay').textContent = p.username;
+  }
 
   /* wire sidebar tabs */
   document.querySelectorAll('.sidebar-link[data-tab]').forEach(link => {
@@ -157,13 +162,18 @@ function renderUsers() {
       <td style="color:var(--text-dim);font-size:0.82rem;">${formatDate(u.created_at)}</td>
       <td>
         <div class="tbl-actions">
-          ${u.role !== 'admin' ? `
+          ${u.role === 'admin' ? `
+            ${u.id === currentAdminId
+              ? '<span style="color:var(--text-muted);font-size:0.8rem;">You</span>'
+              : `<button class="btn btn-ghost btn-sm" onclick="demoteUser(${u.id},'${escHtml(u.username)}')">${svgIcon(ICON.xSimple)} Demote</button>`}
+            <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id},'${escHtml(u.username)}')">${svgIcon(ICON.trash)}</button>
+          ` : `
+            <button class="btn btn-primary btn-sm" onclick="promoteUser(${u.id},'${escHtml(u.username)}')" style="background:linear-gradient(135deg,#ff3d5c,#dc143c);">${svgIcon(ICON.shield)} Make Admin</button>
             ${!u.paid
               ? `<button class="btn btn-success btn-sm" onclick="grantAccess(${u.id},'${escHtml(u.username)}')">${svgIcon(ICON.checkSimple)} Grant</button>`
-              : `<button class="btn btn-ghost btn-sm"   onclick="revokeAccess(${u.id},'${escHtml(u.username)}')">${svgIcon(ICON.xSimple)} Revoke</button>`
-            }
+              : `<button class="btn btn-ghost btn-sm"   onclick="revokeAccess(${u.id},'${escHtml(u.username)}')">${svgIcon(ICON.xSimple)} Revoke</button>`}
             <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id},'${escHtml(u.username)}')">${svgIcon(ICON.trash)}</button>
-          ` : '<span style="color:var(--text-muted);font-size:0.8rem;">Protected</span>'}
+          `}
         </div>
       </td>
     </tr>`).join('');
@@ -193,6 +203,38 @@ async function revokeAccess(id, username) {
     onOk: async () => {
       try {
         const res  = await apiFetch(`/api/admin/users/${id}/revoke`, { method: 'PATCH' });
+        const data = await res.json();
+        showToast(res.ok ? data.message : data.error, res.ok ? 'success' : 'error');
+        if (res.ok) loadUsers();
+      } catch { showToast('Network error', 'error'); }
+    }
+  });
+}
+
+async function promoteUser(id, username) {
+  openConfirm({
+    icon: svgIcon(ICON.shield, '32'), title: `Make ${username} an admin?`,
+    desc: 'They will have full access to the admin panel, can manage users, approve purchases, and upload files. This is a powerful role — only grant it to people you trust.',
+    okLabel: 'Make Admin', okClass: 'btn-primary',
+    onOk: async () => {
+      try {
+        const res  = await apiFetch(`/api/admin/users/${id}/promote`, { method: 'PATCH' });
+        const data = await res.json();
+        showToast(res.ok ? data.message : data.error, res.ok ? 'success' : 'error');
+        if (res.ok) loadUsers();
+      } catch { showToast('Network error', 'error'); }
+    }
+  });
+}
+
+async function demoteUser(id, username) {
+  openConfirm({
+    icon: svgIcon(ICON.xCircle, '32'), title: `Demote ${username}?`,
+    desc: 'They will lose admin access and revert to a regular newbie account. They can still be granted buyer access later.',
+    okLabel: 'Demote', okClass: 'btn-danger',
+    onOk: async () => {
+      try {
+        const res  = await apiFetch(`/api/admin/users/${id}/demote`, { method: 'PATCH' });
         const data = await res.json();
         showToast(res.ok ? data.message : data.error, res.ok ? 'success' : 'error');
         if (res.ok) loadUsers();

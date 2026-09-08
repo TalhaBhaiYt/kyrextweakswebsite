@@ -42,6 +42,12 @@ const users = {
   async revokeAccess(id) {
     await supabase.from('users').update({ role: 'newbie', paid: false }).eq('id', id);
   },
+  async setRole(id, role) {
+    const update = { role };
+    if (role === 'admin' || role === 'buyer') update.paid = true;
+    if (role === 'newbie') update.paid = false;
+    await supabase.from('users').update(update).eq('id', id);
+  },
   async updateLastLogin(id) {
     await supabase.from('users').update({ last_login: new Date().toISOString() }).eq('id', id);
   },
